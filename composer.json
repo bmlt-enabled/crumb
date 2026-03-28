@@ -1,0 +1,20 @@
+{
+  "name": "bmlt-enabled/bmlt-client",
+  "description": "This is a WordPress plugin for BMLT Client.",
+  "type": "project",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "bmlt-enabled"
+    }
+  ],
+  "require-dev": {
+    "squizlabs/php_codesniffer": "3.*",
+    "wp-coding-standards/wpcs": "^3.0"
+  },
+  "config": {
+    "allow-plugins": {
+      "dealerdirect/phpcodesniffer-composer-installer": true
+    }
+  }
+}

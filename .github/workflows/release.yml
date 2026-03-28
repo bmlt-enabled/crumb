@@ -1,0 +1,74 @@
+name: "release"
+
+on:
+  push:
+    tags: ["*"]
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out code 🛒
+        uses: actions/checkout@v6
+
+      - name: Setup PHP 🐫
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.2
+
+      - name: Linter 🧹
+        id: linter
+        run: make lint
+
+  package:
+    runs-on: ubuntu-24.04
+    env:
+      BUILD_DIR: "build"
+      DIST_DIR_GITHUB: "dist/github"
+      GITHUB_RELEASE_FILENAME: "bmlt-client.zip"
+      PLUGIN: bmlt-client"
+      MAINFILE: "bmlt-client.php"
+    needs: [lint]
+    permissions:
+      contents: write
+    steps:
+      - name: Check out code 🛒
+        uses: actions/checkout@v6
+
+      - name: Build package 🔧
+        id: build-package
+        run: |
+          export ZIP_FILENAME=${PLUGIN}-${GITHUB_REF##*/}.zip
+          find ./ -type d | xargs chmod 755
+          find ./ -name '*.php' | xargs chmod 644
+          echo ${GITHUB_SHA} > build.txt
+          make build
+          zip $BUILD_DIR/$ZIP_FILENAME build.txt
+          mkdir -p $DIST_DIR_GITHUB && cp $BUILD_DIR/$ZIP_FILENAME $DIST_DIR_GITHUB/$GITHUB_RELEASE_FILENAME
+          echo "ARTIFACT_PATH=$DIST_DIR_GITHUB/$GITHUB_RELEASE_FILENAME" >> $GITHUB_ENV
+          echo "ARTIFACT_NAME=${ZIP_FILENAME}" >> $GITHUB_ENV
+
+      - name: Generate Release Notes 📝
+        if: github.ref_type == 'tag'
+        run: |
+          CHANGE=$(sed -e '1,/= Changelog =/d' readme.txt | sed "/${GITHUB_REF_NAME%%-*}/,/=/!d;//d" | awk 'NF')
+          echo "$CHANGE" > changelog.txt
+          RELEASE_TYPE=$(if [[ "$GITHUB_REF_NAME" =~ "beta" ]]; then echo "true"; else echo "false"; fi)
+          echo "RELEASE_TYPE=${RELEASE_TYPE}" >> $GITHUB_ENV
+
+      - name: Create Release 🎉
+        uses: ncipollo/release-action@v1
+        if: github.ref_type == 'tag'
+        with:
+          artifacts: ${{ env.ARTIFACT_PATH }}
+          bodyFile: "changelog.txt"
+          prerelease: ${{ env.RELEASE_TYPE }}
+
+      - name: Wordpress Release ⛴
+        if: "!contains(github.ref, 'beta')"
+        id: wordpress-stable-release
+        env:
+          WORDPRESS_USERNAME : ${{ secrets.WORDPRESS_USERNAME }}
+          WORDPRESS_PASSWORD : ${{ secrets.WORDPRESS_PASSWORD }}
+        run: |
+          ./.github/scripts/deploy-wordpress.sh
