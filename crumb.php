@@ -21,7 +21,7 @@ class Crumb {
 
 	private static ?self $instance = null;
 
-	const DEFAULT_CDN_URL = 'http://localhost:4173/app.js';
+	const DEFAULT_CDN_URL = 'https://cdn.aws.bmlt.app/crumb-widget.js';
 
 	public static function get_instance(): self {
 		if ( null === self::$instance ) {
