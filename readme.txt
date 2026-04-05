@@ -3,7 +3,7 @@
 Contributors: bmltenabled, pjaudiomv
 Tags: narcotics anonymous, na, meetings, bmlt, meeting finder
 Requires at least: 6.0
-Tested up to: 6.9
+Tested up to: 7.0
 Requires PHP: 8.1
 Stable tag: 1.0.0
 License: GPLv2 or later
@@ -30,7 +30,7 @@ Add the shortcode to any page or post:
 
 Override settings per page:
 
-`[crumb root_server="https://your-server/main_server" service_body="42"]`
+`[crumb server="https://your-server/main_server" service_body="42"]`
 
 = Documentation =
 
@@ -40,14 +40,14 @@ Full documentation at [crumb.bmlt.app](https://crumb.bmlt.app/).
 
 1. Upload the plugin files to `/wp-content/plugins/crumb/`.
 2. Activate the plugin through the Plugins screen in WordPress.
-3. Go to **Settings → Crumb** and enter your root server URL.
+3. Go to **Settings → Crumb** and enter your BMLT Server URL.
 4. Add `[crumb]` to any page or post.
 
 == Frequently Asked Questions ==
 
-= Where do I find my root server URL? =
+= Where do I find my server URL? =
 
-It is the URL to your BMLT root server, typically ending in `/main_server`. Contact your service body's regional tech team if you are unsure.
+It is the URL to your BMLT server, typically ending in `/main_server`. Contact your service body's regional tech team if you are unsure.
 
 = Can I show only meetings from a specific service body? =
 

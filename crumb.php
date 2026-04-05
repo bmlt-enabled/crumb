@@ -44,20 +44,20 @@ class Crumb {
 	public static function setup_shortcode( array $atts ): string {
 		$atts = shortcode_atts(
 			[
-				'root_server'  => get_option( 'crumb_root_server', 'https://latest.aws.bmlt.app/main_server/' ),
+				'server'  => get_option( 'crumb_server', 'https://latest.aws.bmlt.app/main_server/' ),
 				'service_body' => get_option( 'crumb_service_body', '1047,1048' ),
 			],
 			$atts,
 			'crumb'
 		);
 
-		$root_server = esc_url( trim( $atts['root_server'] ) );
+		$server = esc_url( trim( $atts['server'] ) );
 
-		if ( empty( $root_server ) ) {
-			return '<p style="color:red"><strong>Crumb:</strong> a <code>root_server</code> URL is required.</p>';
+		if ( empty( $server ) ) {
+			return '<p style="color:red"><strong>Crumb:</strong> a <code>server</code> URL is required.</p>';
 		}
 
-		$div = '<div id="crumb-widget" data-root-server="' . $root_server . '"';
+		$div = '<div id="crumb-widget" data-server="' . $server . '"';
 
 		if ( ! empty( $atts['service_body'] ) ) {
 			$div .= ' data-service-body="' . esc_attr( trim( $atts['service_body'] ) ) . '"';
@@ -150,7 +150,7 @@ class Crumb {
 	public static function register_settings(): void {
 		$group = 'crumb-group';
 
-		register_setting( $group, 'crumb_root_server', 'esc_url_raw' );
+		register_setting( $group, 'crumb_server', 'esc_url_raw' );
 		register_setting( $group, 'crumb_service_body', 'sanitize_text_field' );
 		register_setting( $group, 'crumb_css_template', 'sanitize_text_field' );
 	}
@@ -167,12 +167,12 @@ class Crumb {
 
 				<table class="form-table">
 					<tr>
-						<th scope="row"><label for="crumb_root_server">Root Server URL</label></th>
+						<th scope="row"><label for="crumb_server">BMLT Server URL</label></th>
 						<td>
-							<input type="url" id="crumb_root_server" name="crumb_root_server"
-								   value="<?php echo esc_attr( get_option( 'crumb_root_server', 'https://latest.aws.bmlt.app/main_server/' ) ); ?>"
+							<input type="url" id="crumb_server" name="crumb_server"
+								   value="<?php echo esc_attr( get_option( 'crumb_server', 'https://latest.aws.bmlt.app/main_server/' ) ); ?>"
 								   class="regular-text" placeholder="https://your-server/main_server" />
-							<p class="description">Required. The full URL to your BMLT root server.</p>
+							<p class="description">Required. The full URL to your BMLT Server.</p>
 						</td>
 					</tr>
 					<tr>
@@ -216,8 +216,8 @@ class Crumb {
 				<h2>Shortcode Usage</h2>
 				<p><?php esc_html_e( 'Place this shortcode on any page or post:', 'crumb' ); ?></p>
 				<code>[crumb]</code>
-				<p><?php esc_html_e( 'Override root server or service body per page:', 'crumb' ); ?></p>
-				<code>[crumb root_server="https://your-server/main_server" service_body="42"]</code>
+				<p><?php esc_html_e( 'Override server or service body per page:', 'crumb' ); ?></p>
+				<code>[crumb server="https://your-server/main_server" service_body="42"]</code>
 
 				<?php submit_button(); ?>
 			</form>
