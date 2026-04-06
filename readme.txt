@@ -5,7 +5,7 @@ Tags: narcotics anonymous, na, meetings, bmlt, meeting finder
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -30,7 +30,13 @@ Add the shortcode to any page or post:
 
 Override settings per page:
 
-`[crumb server="https://your-server/main_server" service_body="42"]`
+`[crumb server="https://your-server/main_server" service_body="42" view="map"]`
+
+Shortcode attributes:
+
+* `server` — BMLT server URL (overrides the value set in Settings → Crumb)
+* `service_body` — Service body ID or comma-separated list; leave empty to show all meetings
+* `view` — Default view when the widget loads: `list` (default) or `map`; can also be overridden at runtime via the `?view=` query parameter
 
 = Documentation =
 
@@ -53,6 +59,10 @@ It is the URL to your BMLT server, typically ending in `/main_server`. Contact y
 
 Yes. Enter the service body ID (or a comma-separated list of IDs) in the Service Body IDs field, or use the `service_body` shortcode attribute. Child service bodies are always included automatically.
 
+= Can I set the widget to open in map view by default? =
+
+Yes. Choose **Map** from the Default View dropdown in **Settings → Crumb**, or use `view="map"` in the shortcode. Visitors can also switch views at runtime via the `?view=` query parameter.
+
 = Does it work with page builders? =
 
 The shortcode works in any context that processes WordPress shortcodes. If your page builder does not render shortcodes automatically, use its dedicated shortcode block.
@@ -69,6 +79,9 @@ This plugin relies on external services to function properly:
 - **Terms of use**: https://github.com/bmlt-enabled/crumb-widget/blob/main/LICENSE
 
 == Changelog ==
+
+= 1.0.1 =
+* Added `view` shortcode attribute and admin setting to set the default widget view (`list` or `map`).
 
 = 1.0.0 =
 * Initial release.

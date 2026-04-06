@@ -3,7 +3,7 @@
  * Plugin Name: Crumb
  * Plugin URI: https://wordpress.org/plugins/crumb/
  * Description: Embeds the Crumb meeting finder widget on any page or post using a shortcode.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: bmltenabled
  * Author URI: https://bmlt.app
  * License: GPL v2 or later
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'CRUMB_VERSION', '1.0.0' );
+define( 'CRUMB_VERSION', '1.0.1' );
 
 class Crumb {
 
@@ -47,6 +47,7 @@ class Crumb {
 			[
 				'server'       => null,
 				'service_body' => null,
+				'view'         => null,
 			],
 			$atts,
 			'crumb'
@@ -63,10 +64,19 @@ class Crumb {
 		// ''    → explicitly set to empty in shortcode, omit data-service-body (show all meetings).
 		$service_body = $atts['service_body'] ?? get_option( 'crumb_service_body', '1047,1048' );
 
+		// Resolve view: shortcode attr → saved option → omit (widget uses its own default).
+		$view_raw     = $atts['view'] ?? get_option( 'crumb_view', '' );
+		$allowed_views = [ 'list', 'map' ];
+		$view          = in_array( $view_raw, $allowed_views, true ) ? $view_raw : '';
+
 		$div = '<div id="crumb-widget" data-server="' . $server . '"';
 
 		if ( ! empty( $service_body ) ) {
 			$div .= ' data-service-body="' . esc_attr( trim( $service_body ) ) . '"';
+		}
+
+		if ( ! empty( $view ) ) {
+			$div .= ' data-view="' . esc_attr( $view ) . '"';
 		}
 
 		$div .= '></div>';
@@ -159,6 +169,7 @@ class Crumb {
 		register_setting( $group, 'crumb_server', 'esc_url_raw' );
 		register_setting( $group, 'crumb_service_body', 'sanitize_text_field' );
 		register_setting( $group, 'crumb_css_template', 'sanitize_text_field' );
+		register_setting( $group, 'crumb_view', 'sanitize_text_field' );
 	}
 
 	public static function settings_page(): void {
@@ -201,6 +212,17 @@ class Crumb {
 							<p class="description">Full Width fits the content area. Full Width (Force Viewport) breaks out to span the full browser width.</p>
 						</td>
 					</tr>
+					<tr>
+						<th scope="row"><label for="crumb_view">Default View</label></th>
+						<td>
+							<select id="crumb_view" name="crumb_view">
+								<option value="" <?php selected( get_option( 'crumb_view', '' ), '' ); ?>><?php esc_html_e( '— Widget Default (list) —', 'crumb' ); ?></option>
+								<option value="list" <?php selected( get_option( 'crumb_view', '' ), 'list' ); ?>>List</option>
+								<option value="map" <?php selected( get_option( 'crumb_view', '' ), 'map' ); ?>>Map</option>
+							</select>
+							<p class="description">Optional. Sets the default view when the widget loads. Can be overridden at runtime via the <code>?view=</code> query parameter, or per-page via the shortcode <code>view</code> attribute.</p>
+						</td>
+					</tr>
 				</table>
 
 				<h2>Advanced Configuration</h2>
@@ -222,8 +244,8 @@ class Crumb {
 				<h2>Shortcode Usage</h2>
 				<p><?php esc_html_e( 'Place this shortcode on any page or post:', 'crumb' ); ?></p>
 				<code>[crumb]</code>
-				<p><?php esc_html_e( 'Override server or service body per page:', 'crumb' ); ?></p>
-				<code>[crumb server="https://your-server/main_server" service_body="42"]</code>
+				<p><?php esc_html_e( 'Override server, service body, or view per page:', 'crumb' ); ?></p>
+				<code>[crumb server="https://your-server/main_server" service_body="42" view="map"]</code>
 
 				<?php submit_button(); ?>
 			</form>
