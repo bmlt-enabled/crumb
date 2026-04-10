@@ -47,6 +47,40 @@ make fmt
 
 Make sure to run these commands before submitting your pull request to ensure your code adheres to the project's coding standards.
 
+## Testing
+
+This project uses [PHPUnit](https://phpunit.de/) with the [WordPress test suite](https://github.com/wp-phpunit/wp-phpunit) for integration testing. Tests run inside Docker containers so you don't need PHP or MySQL installed locally.
+
+### Running Tests Locally
+
+```bash
+make test
+```
+
+This spins up a MariaDB container, installs WordPress core, and runs the full test suite. Containers are cleaned up automatically afterward.
+
+To remove test images and volumes:
+```bash
+make test-clean
+```
+
+### Writing Tests
+
+Test files live in the `tests/` directory. Add new test files with a `test-` prefix (e.g., `tests/test-feature.php`). Tests extend `WP_UnitTestCase`, which gives you a full WordPress environment with database access.
+
+```php
+class Test_My_Feature extends WP_UnitTestCase {
+
+    public function test_something() {
+        $this->assertTrue( shortcode_exists( 'crumb' ) );
+    }
+}
+```
+
+### CI
+
+Tests run automatically on every pull request and push to `main`. Both lint and tests must pass before a build or release is created.
+
 ## Release Tagging
 
 - If a release is tagged with `beta`, it will be pushed as a zip file in the GitHub release
