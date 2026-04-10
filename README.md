@@ -1,6 +1,15 @@
+<p align="center">
+  <img src="crumb-logo.svg" alt="Crumb Widget logo" width="128" height="128">
+</p>
+
 # Crumb for WordPress
 
-WordPress plugin that embeds the [Crumb Widget](https://crumb.bmlt.app/) meeting finder widget via shortcode.
+[![WordPress Plugin](https://img.shields.io/wordpress/plugin/v/crumb)](https://wordpress.org/plugins/crumb/)
+[![WordPress Tested](https://img.shields.io/wordpress/plugin/tested/crumb)](https://wordpress.org/plugins/crumb/)
+[![PHP Version](https://img.shields.io/wordpress/plugin/required-php/crumb)](https://wordpress.org/plugins/crumb/)
+[![docs](https://img.shields.io/badge/docs-crumb.bmlt.app-blue)](https://crumb.bmlt.app/)
+
+[WordPress plugin](https://wordpress.org/plugins/crumb/) that embeds the [Crumb Widget](https://github.com/bmlt-enabled/crumb-widget) meeting finder via shortcode.
 
 ## Usage
 
@@ -23,7 +32,7 @@ Override settings per page:
 
 ## Settings
 
-Configured under **Settings → Crumb**. All settings can be overridden per-shortcode via attributes.
+Configured under **Settings → Crumb**. Settings can be overridden per-shortcode via attributes.
 
 | Setting              | Shortcode Attribute | Description                              |
 |----------------------|---------------------|------------------------------------------|
@@ -35,6 +44,6 @@ Configured under **Settings → Crumb**. All settings can be overridden per-shor
 
 ### Pretty URLs
 
-By default meeting detail URLs use hash-based routing (`#/monday-night-meeting-42`). To enable clean URLs like `/meetings/monday-night-meeting-42`, enter the page slug (e.g. `meetings`) in the **Base Path for Pretty URLs** setting. After saving, go to **Settings → Permalinks** and click **Save Changes** to update rewrite rules.
+By default, meeting detail URLs use hash-based routing (`#/monday-night-meeting-42`). To enable clean URLs like `/meetings/monday-night-meeting-42`, enter the page slug (e.g. `meetings`) in the **Base Path for Pretty URLs** setting. After saving, go to **Settings → Permalinks** and click **Save Changes** to update rewrite rules.
 
 Full documentation at **[crumb.bmlt.app](https://crumb.bmlt.app/)**.
