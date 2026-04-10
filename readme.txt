@@ -69,14 +69,28 @@ The shortcode works in any context that processes WordPress shortcodes. If your 
 
 == External services ==
 
-This plugin relies on external services to function properly:
+This plugin relies on two external services. Both are part of the BMLT (Basic Meeting List Toolkit) ecosystem — free, open-source tools built for Narcotics Anonymous service bodies (https://bmlt.app).
 
-**Crumb Widget**
-- **Service**: Crumb Widget (https://crumb.bmlt.app)
-- **Purpose**: Provides the JavaScript component that renders the meeting list interface
-- **Data sent**: No user data is transmitted to this service. The plugin only loads the JavaScript library.
-- **When**: The script is loaded whenever a page contains the [crumb] shortcode
-- **Terms of use**: https://github.com/bmlt-enabled/crumb-widget/blob/main/LICENSE
+**1. Crumb Widget CDN**
+
+The widget JavaScript is loaded from a CDN operated by the BMLT project.
+
+- Service: cdn.aws.bmlt.app — delivers the Crumb Widget JavaScript file
+- Purpose: Provides the JavaScript component that renders the meeting list interface
+- Data sent: Standard HTTP request headers (IP address, browser user-agent, referring URL). No personal or meeting-search data is sent to the CDN.
+- When: The script is loaded once per page load on any page that contains the [crumb] shortcode
+- Privacy policy: https://crumb.bmlt.app/privacy.html
+- Terms of use / License: https://github.com/bmlt-enabled/crumb-widget/blob/main/LICENSE
+
+**2. BMLT Server (meeting data)**
+
+The widget fetches meeting data from a BMLT server whose URL you configure in Settings → Crumb. This server is typically operated by a regional NA service body and is not a service operated by the Crumb project.
+
+- Service: Your configured BMLT server (e.g. https://your-region.bmlt.app/main_server/)
+- Purpose: Retrieve NA meeting listings (names, times, locations, formats) to display in the widget
+- Data sent: Search query parameters (filters, keyword, selected formats). If geolocation is enabled and the user consents via a browser prompt, the user's geographic coordinates are also sent to this server.
+- When: On each search or filter action within the widget
+- Privacy policy: Determined by the operator of your configured BMLT server. Learn more at https://bmlt.app.
 
 == Changelog ==
 

@@ -132,7 +132,7 @@ class Crumb {
 
 		wp_register_style( 'crumb-style', false, [], CRUMB_VERSION );
 		wp_enqueue_style( 'crumb-style' );
-		wp_add_inline_style( 'crumb-style', self::build_css() );
+		wp_add_inline_style( 'crumb-style', wp_strip_all_tags( self::build_css() ) );
 	}
 
 	private static function build_css(): string {
