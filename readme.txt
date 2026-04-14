@@ -9,7 +9,7 @@ Stable tag: 1.1.1
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-Embeds the Crumb Widget meeting finder on any page or post.
+Embeds the Crumb Widget NA meeting finder on any page or post via a simple shortcode.
 
 == Description ==
 
@@ -68,6 +68,10 @@ Yes. Choose **Map** from the Default View dropdown in **Settings → Crumb**, or
 
 Yes. Enter the page slug (e.g. `meetings`) in the **Base Path for Pretty URLs** setting under **Settings → Crumb**. After saving, go to **Settings → Permalinks** and click **Save Changes** to update rewrite rules. Meeting detail URLs will then look like `/meetings/monday-night-meeting-42` instead of `/#/monday-night-meeting-42`.
 
+= Can I deep-link to a specific view? =
+
+Yes. Append `?view=list` or `?view=map` to any page URL that contains the `[crumb]` shortcode to open the widget in that view. This works regardless of the default view set in Settings → Crumb, making it easy to link directly to the map view from a button or menu item.
+
 = Does it work with page builders? =
 
 The shortcode works in any context that processes WordPress shortcodes. If your page builder does not render shortcodes automatically, use its dedicated shortcode block.
@@ -123,3 +127,8 @@ The widget fetches meeting data from a BMLT server whose URL you configure in Se
 
 = 1.0.0 =
 * Initial release.
+
+== Upgrade Notice ==
+
+= 1.1.1 =
+Adds "both" as a valid view option. No breaking changes, safe to update.
