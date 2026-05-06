@@ -5,7 +5,7 @@ Tags: narcotics anonymous, na, meetings, bmlt, meeting finder
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 1.2.1
+Stable tag: 1.2.2
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -30,7 +30,7 @@ Add the shortcode to any page or post:
 
 Override settings per page:
 
-`[crumb server="https://your-server/main_server" service_body="42" format_ids="17,54" view="map" geolocation="true"]`
+`[crumb server="https://your-server/main_server" service_body="42" format_ids="17,54" view="map" geolocation="true" geolocation_radius="30"]`
 
 Shortcode attributes:
 
@@ -39,6 +39,7 @@ Shortcode attributes:
 * `format_ids` — Format ID or comma-separated list of BMLT format IDs to lock the widget to; leave empty to show all formats
 * `view` — Default view when the widget loads: `list` (default), `map`, or `both` (map above list with no toggle); can also be overridden at runtime via the `?view=` query parameter
 * `geolocation` — Enable or disable geolocation for this page: `true` or `false`
+* `geolocation_radius` — Geolocation search radius. Positive integer = fixed radius in miles (or km per server settings). Negative integer = BMLT auto-radius: the server expands the search until it finds roughly that many meetings (e.g. `-50` finds ~50 nearby meetings). Overrides the Geolocation Radius setting and Widget Configuration.
 
 = Documentation =
 
@@ -109,6 +110,11 @@ The widget fetches meeting data from a BMLT server whose URL you configure in Se
 
 == Changelog ==
 
+= 1.2.2 =
+* Added **Geolocation Radius** admin setting — dedicated field for geolocation search radius, separate from the JSON config textarea.
+* Added `geolocation_radius` shortcode attribute to override the radius per page.
+* Support BMLT auto-radius mode: a negative `geolocationRadius` value instructs the server to expand the search until roughly that many meetings are found (e.g. `-50` finds ~50 nearby meetings).
+
 = 1.2.1 =
 * Fixed numeric widget config values (e.g. `geolocationRadius`) being coerced to strings by `wp_localize_script`; switched to `wp_add_inline_script` to preserve JSON types.
 
@@ -137,8 +143,8 @@ The widget fetches meeting data from a BMLT server whose URL you configure in Se
 
 == Upgrade Notice ==
 
-= 1.2.1 =
-Bug fix: numeric widget config values (e.g. `geolocationRadius`) now passed correctly. Safe to update.
+= 1.2.2 =
+Adds Geolocation Radius admin setting, `geolocation_radius` shortcode attribute, and BMLT auto-radius support (negative values). Safe to update.
 
 = 1.2.0 =
 Adds format ID filtering. No breaking changes, safe to update.
