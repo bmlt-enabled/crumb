@@ -21,7 +21,7 @@ class Crumb {
 
 	private static ?self $instance = null;
 	private static ?bool $shortcode_geolocation        = null;
-	private static ?int  $shortcode_geolocation_radius = null;
+	private static ?int $shortcode_geolocation_radius = null;
 
 	const DEFAULT_CDN_URL = 'https://cdn.aws.bmlt.app/crumb-widget.js';
 	const REWRITE_VERSION = '1';
