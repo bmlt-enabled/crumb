@@ -3,7 +3,7 @@
  * Plugin Name: Crumb
  * Plugin URI: https://wordpress.org/plugins/crumb/
  * Description: Embeds the Crumb meeting finder widget on any page or post using a shortcode.
- * Version: 1.2.0
+ * Version: 1.2.1
  * Author: bmltenabled
  * Author URI: https://bmlt.app
  * License: GPL v2 or later
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'CRUMB_VERSION', '1.2.0' );
+define( 'CRUMB_VERSION', '1.2.1' );
 
 class Crumb {
 
@@ -245,7 +245,7 @@ class Crumb {
 		}
 
 		if ( ! empty( $config ) ) {
-			wp_localize_script( 'crumb', 'CrumbWidgetConfig', $config );
+			wp_add_inline_script( 'crumb', 'var CrumbWidgetConfig = ' . wp_json_encode( $config ) . ';', 'before' );
 		}
 	}
 
