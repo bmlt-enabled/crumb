@@ -5,7 +5,7 @@ Tags: narcotics anonymous, na, meetings, bmlt, meeting finder
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 1.1.1
+Stable tag: 1.2.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -30,12 +30,13 @@ Add the shortcode to any page or post:
 
 Override settings per page:
 
-`[crumb server="https://your-server/main_server" service_body="42" view="map" geolocation="true"]`
+`[crumb server="https://your-server/main_server" service_body="42" format_ids="17,54" view="map" geolocation="true"]`
 
 Shortcode attributes:
 
 * `server` — BMLT server URL (overrides the value set in Settings → Crumb)
 * `service_body` — Service body ID or comma-separated list; leave empty to show all meetings
+* `format_ids` — Format ID or comma-separated list of BMLT format IDs to lock the widget to; leave empty to show all formats
 * `view` — Default view when the widget loads: `list` (default), `map`, or `both` (map above list with no toggle); can also be overridden at runtime via the `?view=` query parameter
 * `geolocation` — Enable or disable geolocation for this page: `true` or `false`
 
@@ -108,6 +109,9 @@ The widget fetches meeting data from a BMLT server whose URL you configure in Se
 
 == Changelog ==
 
+= 1.2.0 =
+* Added **Format IDs** setting and `format_ids` shortcode attribute to lock the widget to specific BMLT formats (single ID or comma-separated list).
+
 = 1.1.1 =
 * Added `both` as a valid `view` option — displays the map above the meeting list with no list/map toggle.
 
@@ -129,6 +133,9 @@ The widget fetches meeting data from a BMLT server whose URL you configure in Se
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.2.0 =
+Adds format ID filtering. No breaking changes, safe to update.
 
 = 1.1.1 =
 Adds "both" as a valid view option. No breaking changes, safe to update.

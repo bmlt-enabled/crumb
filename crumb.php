@@ -3,7 +3,7 @@
  * Plugin Name: Crumb
  * Plugin URI: https://wordpress.org/plugins/crumb/
  * Description: Embeds the Crumb meeting finder widget on any page or post using a shortcode.
- * Version: 1.1.1
+ * Version: 1.2.0
  * Author: bmltenabled
  * Author URI: https://bmlt.app
  * License: GPL v2 or later
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'CRUMB_VERSION', '1.1.1' );
+define( 'CRUMB_VERSION', '1.2.0' );
 
 class Crumb {
 
@@ -99,6 +99,7 @@ class Crumb {
 			[
 				'server'       => null,
 				'service_body' => null,
+				'format_ids'   => null,
 				'view'         => null,
 				'geolocation'  => null,
 			],
@@ -122,6 +123,9 @@ class Crumb {
 		// ''    → explicitly set to empty in shortcode, omit data-service-body (show all meetings).
 		$service_body = $atts['service_body'] ?? get_option( 'crumb_service_body', '1047,1048' );
 
+		// null → not in shortcode, use saved option. '' → omit (no format lock).
+		$format_ids = $atts['format_ids'] ?? get_option( 'crumb_format_ids', '' );
+
 		// Resolve view: shortcode attr → saved option → omit (widget uses its own default).
 		$view_raw     = $atts['view'] ?? get_option( 'crumb_view', '' );
 		$allowed_views = [ 'list', 'map', 'both' ];
@@ -131,6 +135,10 @@ class Crumb {
 
 		if ( ! empty( $service_body ) ) {
 			$div .= ' data-service-body="' . esc_attr( trim( $service_body ) ) . '"';
+		}
+
+		if ( ! empty( $format_ids ) ) {
+			$div .= ' data-format-ids="' . esc_attr( trim( $format_ids ) ) . '"';
 		}
 
 		if ( ! empty( $view ) ) {
@@ -315,6 +323,7 @@ class Crumb {
 
 		register_setting( $group, 'crumb_server', 'esc_url_raw' );
 		register_setting( $group, 'crumb_service_body', 'sanitize_text_field' );
+		register_setting( $group, 'crumb_format_ids', 'sanitize_text_field' );
 		register_setting( $group, 'crumb_css_template', 'sanitize_text_field' );
 		register_setting( $group, 'crumb_view', 'sanitize_text_field' );
 		register_setting(
@@ -391,6 +400,15 @@ class Crumb {
 						</td>
 					</tr>
 					<tr>
+						<th scope="row"><label for="crumb_format_ids">Format IDs</label></th>
+						<td>
+							<input type="text" id="crumb_format_ids" name="crumb_format_ids"
+								   value="<?php echo esc_attr( get_option( 'crumb_format_ids', '' ) ); ?>"
+								   class="regular-text" placeholder="17 or 17,54,78" />
+							<p class="description">Optional. Single ID or comma-separated list of BMLT format IDs to lock the widget to. Leave empty to show all formats. Can be overridden per-page via the shortcode <code>format_ids</code> attribute.</p>
+						</td>
+					</tr>
+					<tr>
 						<th scope="row"><label for="crumb_css_template">CSS Template</label></th>
 						<td>
 							<select id="crumb_css_template" name="crumb_css_template">
@@ -460,7 +478,7 @@ class Crumb {
 				<p><?php esc_html_e( 'Place this shortcode on any page or post:', 'crumb' ); ?></p>
 				<code>[crumb]</code>
 				<p><?php esc_html_e( 'Override settings per page:', 'crumb' ); ?></p>
-				<code>[crumb server="https://your-server/main_server" service_body="42" view="map" geolocation="true"]</code>
+				<code>[crumb server="https://your-server/main_server" service_body="42" format_ids="17,54" view="map" geolocation="true"]</code>
 
 				<?php submit_button(); ?>
 			</form>
