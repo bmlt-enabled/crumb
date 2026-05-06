@@ -62,6 +62,42 @@ class Test_Crumb extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'data-view="both"', $html );
 	}
 
+	public function test_shortcode_format_ids_attribute_adds_data_attribute() {
+		$html = do_shortcode( '[crumb format_ids="17"]' );
+		$this->assertStringContainsString( 'data-format-ids="17"', $html );
+	}
+
+	public function test_shortcode_format_ids_comma_separated() {
+		$html = do_shortcode( '[crumb format_ids="17,54,78"]' );
+		$this->assertStringContainsString( 'data-format-ids="17,54,78"', $html );
+	}
+
+	public function test_shortcode_empty_format_ids_omits_attribute() {
+		$html = do_shortcode( '[crumb format_ids=""]' );
+		$this->assertStringNotContainsString( 'data-format-ids', $html );
+	}
+
+	public function test_shortcode_format_ids_overrides_saved_option() {
+		update_option( 'crumb_format_ids', '99' );
+		$html = do_shortcode( '[crumb format_ids="17"]' );
+		$this->assertStringContainsString( 'data-format-ids="17"', $html );
+		$this->assertStringNotContainsString( 'data-format-ids="99"', $html );
+		delete_option( 'crumb_format_ids' );
+	}
+
+	public function test_shortcode_uses_saved_format_ids_option() {
+		update_option( 'crumb_format_ids', '42,57' );
+		$html = do_shortcode( '[crumb]' );
+		$this->assertStringContainsString( 'data-format-ids="42,57"', $html );
+		delete_option( 'crumb_format_ids' );
+	}
+
+	public function test_shortcode_no_format_ids_option_omits_attribute() {
+		delete_option( 'crumb_format_ids' );
+		$html = do_shortcode( '[crumb]' );
+		$this->assertStringNotContainsString( 'data-format-ids', $html );
+	}
+
 	public function test_shortcode_invalid_view_is_ignored() {
 		$html = do_shortcode( '[crumb view="calendar"]' );
 		$this->assertStringNotContainsString( 'data-view', $html );
@@ -220,6 +256,7 @@ class Test_Crumb extends WP_UnitTestCase {
 		$registered = get_registered_settings();
 		$this->assertArrayHasKey( 'crumb_server', $registered );
 		$this->assertArrayHasKey( 'crumb_service_body', $registered );
+		$this->assertArrayHasKey( 'crumb_format_ids', $registered );
 		$this->assertArrayHasKey( 'crumb_css_template', $registered );
 		$this->assertArrayHasKey( 'crumb_view', $registered );
 		$this->assertArrayHasKey( 'crumb_base_path', $registered );
