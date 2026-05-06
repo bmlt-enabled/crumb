@@ -3,7 +3,7 @@
  * Plugin Name: Crumb
  * Plugin URI: https://wordpress.org/plugins/crumb/
  * Description: Embeds the Crumb meeting finder widget on any page or post using a shortcode.
- * Version: 1.2.1
+ * Version: 1.2.2
  * Author: bmltenabled
  * Author URI: https://bmlt.app
  * License: GPL v2 or later
@@ -15,12 +15,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'CRUMB_VERSION', '1.2.1' );
+define( 'CRUMB_VERSION', '1.2.2' );
 
 class Crumb {
 
 	private static ?self $instance = null;
-	private static ?bool $shortcode_geolocation = null;
+	private static ?bool $shortcode_geolocation        = null;
+	private static ?int  $shortcode_geolocation_radius = null;
 
 	const DEFAULT_CDN_URL = 'https://cdn.aws.bmlt.app/crumb-widget.js';
 	const REWRITE_VERSION = '1';
@@ -97,11 +98,12 @@ class Crumb {
 		// Use null as sentinel so we can distinguish "not provided" from explicit empty string.
 		$atts = shortcode_atts(
 			[
-				'server'       => null,
-				'service_body' => null,
-				'format_ids'   => null,
-				'view'         => null,
-				'geolocation'  => null,
+				'server'             => null,
+				'service_body'       => null,
+				'format_ids'         => null,
+				'view'               => null,
+				'geolocation'        => null,
+				'geolocation_radius' => null,
 			],
 			$atts,
 			'crumb'
@@ -110,6 +112,13 @@ class Crumb {
 		// Store geolocation for merging into CrumbWidgetConfig during wp_footer.
 		if ( null !== $atts['geolocation'] ) {
 			self::$shortcode_geolocation = filter_var( $atts['geolocation'], FILTER_VALIDATE_BOOLEAN );
+		}
+
+		if ( null !== $atts['geolocation_radius'] ) {
+			$radius = (int) $atts['geolocation_radius'];
+			if ( 0 !== $radius ) {
+				self::$shortcode_geolocation_radius = $radius;
+			}
 		}
 
 		// Shortcode attribute takes precedence; fall back to saved option only when not provided.
@@ -228,7 +237,7 @@ class Crumb {
 		 *       return array_merge( $config, [
 		 *           'language'          => 'es',
 		 *           'geolocation'       => true,
-		 *           'geolocationRadius' => 20,
+		 *           'geolocationRadius' => -50,
 		 *           'height'            => 800,
 		 *           'columns'           => [ 'time', 'name', 'location', 'address', 'service_body' ],
 		 *       ] );
@@ -244,6 +253,10 @@ class Crumb {
 			$config['geolocation'] = self::$shortcode_geolocation;
 		}
 
+		if ( null !== self::$shortcode_geolocation_radius ) {
+			$config['geolocationRadius'] = self::$shortcode_geolocation_radius;
+		}
+
 		if ( ! empty( $config ) ) {
 			wp_add_inline_script( 'crumb', 'var CrumbWidgetConfig = ' . wp_json_encode( $config ) . ';', 'before' );
 		}
@@ -252,14 +265,17 @@ class Crumb {
 	private static function get_config(): array {
 		$config_json = get_option( 'crumb_widget_config', '' );
 
-		if ( empty( $config_json ) ) {
-			return [];
+		if ( ! empty( $config_json ) ) {
+			$decoded = json_decode( $config_json, true );
+			$config  = ( json_last_error() === JSON_ERROR_NONE ) ? $decoded : [];
+		} else {
+			$config = [];
 		}
 
-		$config = json_decode( $config_json, true );
-
-		if ( json_last_error() !== JSON_ERROR_NONE ) {
-			return [];
+		// Dedicated geolocation radius field — JSON config takes precedence if already set.
+		$radius_opt = get_option( 'crumb_geolocation_radius', '' );
+		if ( '' !== $radius_opt && ! isset( $config['geolocationRadius'] ) ) {
+			$config['geolocationRadius'] = (int) $radius_opt;
 		}
 
 		return $config;
@@ -274,6 +290,15 @@ class Crumb {
 		}
 
 		return $new_value;
+	}
+
+	public static function sanitize_geolocation_radius( string $input ): string {
+		$trimmed = trim( $input );
+		if ( '' === $trimmed ) {
+			return '';
+		}
+		$val = (int) $trimmed;
+		return ( 0 !== $val ) ? (string) $val : '';
 	}
 
 	public static function sanitize_config( string $input ): string {
@@ -328,6 +353,14 @@ class Crumb {
 		register_setting( $group, 'crumb_view', 'sanitize_text_field' );
 		register_setting(
 			$group,
+			'crumb_geolocation_radius',
+			[
+				'type'              => 'string',
+				'sanitize_callback' => [ static::class, 'sanitize_geolocation_radius' ],
+			]
+		);
+		register_setting(
+			$group,
 			'crumb_base_path',
 			[
 				'type'              => 'string',
@@ -349,7 +382,7 @@ class Crumb {
 			[
 				'language'          => 'en',
 				'geolocation'       => true,
-				'geolocationRadius' => 75,
+				'geolocationRadius' => -50,
 				'height'            => 800,
 				'darkMode'          => 'auto',
 				'nowOffset'         => 10,
@@ -447,6 +480,22 @@ class Crumb {
 							<p class="description">Optional. Sets the default view when the widget loads. Can be overridden at runtime via the <code>?view=</code> query parameter, or per-page via the shortcode <code>view</code> attribute.</p>
 						</td>
 					</tr>
+					<tr>
+						<th scope="row"><label for="crumb_geolocation_radius">Geolocation Radius</label></th>
+						<td>
+							<input type="number" id="crumb_geolocation_radius" name="crumb_geolocation_radius"
+								   value="<?php echo esc_attr( get_option( 'crumb_geolocation_radius', '' ) ); ?>"
+								   class="small-text" placeholder="-50" />
+							<p class="description">
+								Optional. Controls the search radius when geolocation is enabled.
+								A <strong>positive</strong> value sets a fixed radius in miles (or km, per server settings).
+								A <strong>negative</strong> value uses BMLT auto-radius mode — the server expands the search until it finds roughly that many meetings (e.g. <code>-50</code> finds ~50 nearby meetings).
+								Leave empty to use the widget default.
+								Can be overridden per-page via the shortcode <code>geolocation_radius</code> attribute.
+								Overridden by a <code>geolocationRadius</code> key in Widget Configuration below.
+							</p>
+						</td>
+					</tr>
 				</table>
 
 				<h2>Advanced Configuration</h2>
@@ -478,7 +527,7 @@ class Crumb {
 				<p><?php esc_html_e( 'Place this shortcode on any page or post:', 'crumb' ); ?></p>
 				<code>[crumb]</code>
 				<p><?php esc_html_e( 'Override settings per page:', 'crumb' ); ?></p>
-				<code>[crumb server="https://your-server/main_server" service_body="42" format_ids="17,54" view="map" geolocation="true"]</code>
+				<code>[crumb server="https://your-server/main_server" service_body="42" format_ids="17,54" view="map" geolocation="true" geolocation_radius="-50"]</code>
 
 				<?php submit_button(); ?>
 			</form>

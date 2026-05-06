@@ -5,6 +5,19 @@
 
 class Test_Crumb extends WP_UnitTestCase {
 
+	public function setUp(): void {
+		parent::setUp();
+		// Reset wp_scripts global so inline script data doesn't leak between tests.
+		$GLOBALS['wp_scripts'] = new WP_Scripts();
+		// Reset private statics on Crumb.
+		$ref = new ReflectionClass( Crumb::class );
+		foreach ( [ 'shortcode_geolocation', 'shortcode_geolocation_radius' ] as $prop ) {
+			$p = $ref->getProperty( $prop );
+			$p->setAccessible( true );
+			$p->setValue( null, null );
+		}
+	}
+
 	/**
 	 * The singleton should always return the same instance.
 	 */
@@ -216,6 +229,207 @@ class Test_Crumb extends WP_UnitTestCase {
 	}
 
 	// -------------------------------------------------------------------------
+	// localize_config / wp_add_inline_script type preservation
+	// -------------------------------------------------------------------------
+
+	private function get_inline_config(): ?array {
+		$raw = wp_scripts()->get_data( 'crumb', 'before' );
+		if ( empty( $raw ) ) {
+			return null;
+		}
+		// $raw is an array of script strings; join and extract the JSON.
+		$script = implode( "\n", (array) $raw );
+		if ( ! preg_match( '/CrumbWidgetConfig\s*=\s*(\{.+\});/', $script, $m ) ) {
+			return null;
+		}
+		return json_decode( $m[1], true );
+	}
+
+	private function enqueue_crumb(): void {
+		wp_enqueue_script( 'crumb', Crumb::DEFAULT_CDN_URL, [], CRUMB_VERSION, true );
+	}
+
+	public function test_localize_config_preserves_numeric_types() {
+		$this->enqueue_crumb();
+		update_option( 'crumb_widget_config', '{"geolocationRadius":30}' );
+
+		Crumb::localize_config();
+
+		$config = $this->get_inline_config();
+		$this->assertNotNull( $config );
+		$this->assertSame( 30, $config['geolocationRadius'] );
+
+		delete_option( 'crumb_widget_config' );
+	}
+
+	public function test_localize_config_preserves_boolean_types() {
+		$this->enqueue_crumb();
+		update_option( 'crumb_widget_config', '{"geolocation":true,"darkMode":false}' );
+
+		Crumb::localize_config();
+
+		$config = $this->get_inline_config();
+		$this->assertNotNull( $config );
+		$this->assertTrue( $config['geolocation'] );
+		$this->assertFalse( $config['darkMode'] );
+
+		delete_option( 'crumb_widget_config' );
+	}
+
+	public function test_localize_config_empty_config_outputs_nothing() {
+		$this->enqueue_crumb();
+		delete_option( 'crumb_widget_config' );
+
+		Crumb::localize_config();
+
+		$raw = wp_scripts()->get_data( 'crumb', 'before' );
+		$this->assertEmpty( $raw );
+	}
+
+	public function test_localize_config_not_enqueued_outputs_nothing() {
+		// Do NOT enqueue crumb — localize_config should bail early.
+		update_option( 'crumb_widget_config', '{"geolocationRadius":30}' );
+
+		Crumb::localize_config();
+
+		$raw = wp_scripts()->get_data( 'crumb', 'before' );
+		$this->assertEmpty( $raw );
+
+		delete_option( 'crumb_widget_config' );
+	}
+
+	// -------------------------------------------------------------------------
+	// geolocation_radius shortcode attribute
+	// -------------------------------------------------------------------------
+
+	public function test_shortcode_geolocation_radius_sets_config() {
+		$this->enqueue_crumb();
+		do_shortcode( '[crumb geolocation_radius="30"]' );
+
+		Crumb::localize_config();
+
+		$config = $this->get_inline_config();
+		$this->assertNotNull( $config );
+		$this->assertSame( 30, $config['geolocationRadius'] );
+	}
+
+	public function test_shortcode_geolocation_radius_overrides_widget_config() {
+		$this->enqueue_crumb();
+		update_option( 'crumb_widget_config', '{"geolocationRadius":75}' );
+		do_shortcode( '[crumb geolocation_radius="30"]' );
+
+		Crumb::localize_config();
+
+		$config = $this->get_inline_config();
+		$this->assertNotNull( $config );
+		$this->assertSame( 30, $config['geolocationRadius'] );
+
+		delete_option( 'crumb_widget_config' );
+	}
+
+	public function test_shortcode_geolocation_radius_zero_is_ignored() {
+		$this->enqueue_crumb();
+		do_shortcode( '[crumb geolocation_radius="0"]' );
+
+		Crumb::localize_config();
+
+		$raw = wp_scripts()->get_data( 'crumb', 'before' );
+		$this->assertEmpty( $raw );
+	}
+
+	public function test_shortcode_geolocation_radius_negative_is_accepted() {
+		// Negative geo_width is valid BMLT auto-radius: find roughly N meetings.
+		$this->enqueue_crumb();
+		do_shortcode( '[crumb geolocation_radius="-50"]' );
+
+		Crumb::localize_config();
+
+		$config = $this->get_inline_config();
+		$this->assertNotNull( $config );
+		$this->assertSame( -50, $config['geolocationRadius'] );
+	}
+
+	// -------------------------------------------------------------------------
+	// sanitize_geolocation_radius
+	// -------------------------------------------------------------------------
+
+	public function test_sanitize_geolocation_radius_positive() {
+		$this->assertSame( '30', Crumb::sanitize_geolocation_radius( '30' ) );
+	}
+
+	public function test_sanitize_geolocation_radius_negative() {
+		$this->assertSame( '-50', Crumb::sanitize_geolocation_radius( '-50' ) );
+	}
+
+	public function test_sanitize_geolocation_radius_zero_returns_empty() {
+		$this->assertSame( '', Crumb::sanitize_geolocation_radius( '0' ) );
+	}
+
+	public function test_sanitize_geolocation_radius_empty_returns_empty() {
+		$this->assertSame( '', Crumb::sanitize_geolocation_radius( '' ) );
+	}
+
+	public function test_sanitize_geolocation_radius_trims_whitespace() {
+		$this->assertSame( '30', Crumb::sanitize_geolocation_radius( '  30  ' ) );
+	}
+
+	// -------------------------------------------------------------------------
+	// geolocation radius option merging in get_config / localize_config
+	// -------------------------------------------------------------------------
+
+	public function test_dedicated_radius_option_sets_config() {
+		$this->enqueue_crumb();
+		update_option( 'crumb_geolocation_radius', '-50' );
+
+		Crumb::localize_config();
+
+		$config = $this->get_inline_config();
+		$this->assertNotNull( $config );
+		$this->assertSame( -50, $config['geolocationRadius'] );
+
+		delete_option( 'crumb_geolocation_radius' );
+	}
+
+	public function test_json_config_overrides_dedicated_radius_option() {
+		$this->enqueue_crumb();
+		update_option( 'crumb_geolocation_radius', '-50' );
+		update_option( 'crumb_widget_config', '{"geolocationRadius":30}' );
+
+		Crumb::localize_config();
+
+		$config = $this->get_inline_config();
+		$this->assertNotNull( $config );
+		$this->assertSame( 30, $config['geolocationRadius'] );
+
+		delete_option( 'crumb_geolocation_radius' );
+		delete_option( 'crumb_widget_config' );
+	}
+
+	public function test_shortcode_attribute_overrides_dedicated_radius_option() {
+		$this->enqueue_crumb();
+		update_option( 'crumb_geolocation_radius', '-50' );
+		do_shortcode( '[crumb geolocation_radius="25"]' );
+
+		Crumb::localize_config();
+
+		$config = $this->get_inline_config();
+		$this->assertNotNull( $config );
+		$this->assertSame( 25, $config['geolocationRadius'] );
+
+		delete_option( 'crumb_geolocation_radius' );
+	}
+
+	public function test_dedicated_radius_option_empty_does_not_set_config() {
+		$this->enqueue_crumb();
+		delete_option( 'crumb_geolocation_radius' );
+
+		Crumb::localize_config();
+
+		$raw = wp_scripts()->get_data( 'crumb', 'before' );
+		$this->assertEmpty( $raw );
+	}
+
+	// -------------------------------------------------------------------------
 	// sanitize_config
 	// -------------------------------------------------------------------------
 
@@ -259,6 +473,7 @@ class Test_Crumb extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'crumb_format_ids', $registered );
 		$this->assertArrayHasKey( 'crumb_css_template', $registered );
 		$this->assertArrayHasKey( 'crumb_view', $registered );
+		$this->assertArrayHasKey( 'crumb_geolocation_radius', $registered );
 		$this->assertArrayHasKey( 'crumb_base_path', $registered );
 		$this->assertArrayHasKey( 'crumb_widget_config', $registered );
 	}
