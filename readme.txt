@@ -5,7 +5,7 @@ Tags: narcotics anonymous, na, meetings, bmlt, meeting finder
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 1.2.0
+Stable tag: 1.2.1
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -109,6 +109,9 @@ The widget fetches meeting data from a BMLT server whose URL you configure in Se
 
 == Changelog ==
 
+= 1.2.1 =
+* Fixed numeric widget config values (e.g. `geolocationRadius`) being coerced to strings by `wp_localize_script`; switched to `wp_add_inline_script` to preserve JSON types.
+
 = 1.2.0 =
 * Added **Format IDs** setting and `format_ids` shortcode attribute to lock the widget to specific BMLT formats (single ID or comma-separated list).
 
@@ -133,6 +136,9 @@ The widget fetches meeting data from a BMLT server whose URL you configure in Se
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.2.1 =
+Bug fix: numeric widget config values (e.g. `geolocationRadius`) now passed correctly. Safe to update.
 
 = 1.2.0 =
 Adds format ID filtering. No breaking changes, safe to update.
