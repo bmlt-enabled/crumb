@@ -111,6 +111,51 @@ class Test_Crumb extends WP_UnitTestCase {
 		$this->assertStringNotContainsString( 'data-format-ids', $html );
 	}
 
+	// -------------------------------------------------------------------------
+	// update_url shortcode attribute and option
+	// -------------------------------------------------------------------------
+
+	public function test_shortcode_update_url_attribute_adds_data_attribute() {
+		$html = do_shortcode( '[crumb update_url="https://example.org/form/?meeting_id={meeting_id}"]' );
+		$this->assertStringContainsString( 'data-update-url="https://example.org/form/?meeting_id={meeting_id}"', $html );
+	}
+
+	public function test_shortcode_update_url_mailto_attribute() {
+		$html = do_shortcode( '[crumb update_url="mailto:webservant@example.org?subject=Update%20{meeting_name}"]' );
+		$this->assertStringContainsString( 'data-update-url="mailto:webservant@example.org?subject=Update%20{meeting_name}"', $html );
+	}
+
+	public function test_shortcode_empty_update_url_omits_attribute() {
+		$html = do_shortcode( '[crumb update_url=""]' );
+		$this->assertStringNotContainsString( 'data-update-url', $html );
+	}
+
+	public function test_shortcode_update_url_overrides_saved_option() {
+		update_option( 'crumb_update_url', 'https://saved.example.org/form/?meeting_id={meeting_id}' );
+		$html = do_shortcode( '[crumb update_url="https://override.example.org/form/?meeting_id={meeting_id}"]' );
+		$this->assertStringContainsString( 'data-update-url="https://override.example.org/form/?meeting_id={meeting_id}"', $html );
+		$this->assertStringNotContainsString( 'saved.example.org', $html );
+		delete_option( 'crumb_update_url' );
+	}
+
+	public function test_shortcode_uses_saved_update_url_option() {
+		update_option( 'crumb_update_url', 'https://example.org/form/?meeting_id={meeting_id}' );
+		$html = do_shortcode( '[crumb]' );
+		$this->assertStringContainsString( 'data-update-url="https://example.org/form/?meeting_id={meeting_id}"', $html );
+		delete_option( 'crumb_update_url' );
+	}
+
+	public function test_shortcode_no_update_url_option_omits_attribute() {
+		delete_option( 'crumb_update_url' );
+		$html = do_shortcode( '[crumb]' );
+		$this->assertStringNotContainsString( 'data-update-url', $html );
+	}
+
+	public function test_shortcode_update_url_escapes_html_attributes() {
+		$html = do_shortcode( '[crumb update_url=\'"><script>alert(1)</script>\']' );
+		$this->assertStringNotContainsString( '<script>alert(1)</script>', $html );
+	}
+
 	public function test_shortcode_invalid_view_is_ignored() {
 		$html = do_shortcode( '[crumb view="calendar"]' );
 		$this->assertStringNotContainsString( 'data-view', $html );
@@ -475,6 +520,7 @@ class Test_Crumb extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'crumb_view', $registered );
 		$this->assertArrayHasKey( 'crumb_geolocation_radius', $registered );
 		$this->assertArrayHasKey( 'crumb_base_path', $registered );
+		$this->assertArrayHasKey( 'crumb_update_url', $registered );
 		$this->assertArrayHasKey( 'crumb_widget_config', $registered );
 	}
 

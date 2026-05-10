@@ -5,7 +5,7 @@ Tags: narcotics anonymous, na, meetings, bmlt, meeting finder
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 1.2.2
+Stable tag: 1.3.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -40,6 +40,7 @@ Shortcode attributes:
 * `view` — Default view when the widget loads: `list` (default), `map`, or `both` (map above list with no toggle); can also be overridden at runtime via the `?view=` query parameter
 * `geolocation` — Enable or disable geolocation for this page: `true` or `false`
 * `geolocation_radius` — Geolocation search radius. Positive integer = fixed radius in miles (or km per server settings). Negative integer = BMLT auto-radius: the server expands the search until it finds roughly that many meetings (e.g. `-50` finds ~50 nearby meetings). Overrides the Geolocation Radius setting and Widget Configuration.
+* `update_url` — URL template for the **Update Meeting Info** link shown at the bottom of the meeting detail panel. Supports tokens `{meeting_id}`, `{meeting_name}`, `{server_url}`, `{return_url}` (URL-encoded on substitution). Works with bmlt-workflow, hosted forms, or `mailto:` URLs.
 
 = Documentation =
 
@@ -110,6 +111,9 @@ The widget fetches meeting data from a BMLT server whose URL you configure in Se
 
 == Changelog ==
 
+= 1.3.0 =
+* Added **Update Meeting URL** setting and `update_url` shortcode attribute — URL template that powers the "Update Meeting Info" link on the meeting detail panel. Supports tokens `{meeting_id}`, `{meeting_name}`, `{server_url}`, and `{return_url}` (URL-encoded on substitution). Works with [bmlt-workflow](https://github.com/bmlt-enabled/bmlt-workflow), arbitrary hosted forms, or `mailto:` URLs. Leave empty to hide the link.
+
 = 1.2.2 =
 * Added **Geolocation Radius** admin setting — dedicated field for geolocation search radius, separate from the JSON config textarea.
 * Added `geolocation_radius` shortcode attribute to override the radius per page.
@@ -142,6 +146,9 @@ The widget fetches meeting data from a BMLT server whose URL you configure in Se
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.3.0 =
+Adds Update Meeting URL setting and `update_url` shortcode attribute for the configurable "Update Meeting Info" link. Safe to update.
 
 = 1.2.2 =
 Adds Geolocation Radius admin setting, `geolocation_radius` shortcode attribute, and BMLT auto-radius support (negative values). Safe to update.

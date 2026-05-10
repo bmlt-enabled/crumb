@@ -3,7 +3,7 @@
  * Plugin Name: Crumb
  * Plugin URI: https://wordpress.org/plugins/crumb/
  * Description: Embeds the Crumb meeting finder widget on any page or post using a shortcode.
- * Version: 1.2.2
+ * Version: 1.3.0
  * Author: bmltenabled
  * Author URI: https://bmlt.app
  * License: GPL v2 or later
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'CRUMB_VERSION', '1.2.2' );
+define( 'CRUMB_VERSION', '1.3.0' );
 
 class Crumb {
 
@@ -104,6 +104,7 @@ class Crumb {
 				'view'               => null,
 				'geolocation'        => null,
 				'geolocation_radius' => null,
+				'update_url'         => null,
 			],
 			$atts,
 			'crumb'
@@ -157,6 +158,12 @@ class Crumb {
 		$base_path = get_option( 'crumb_base_path', '' );
 		if ( '' !== $base_path ) {
 			$div .= ' data-path="/' . esc_attr( trim( $base_path, '/' ) ) . '"';
+		}
+
+		// null → not in shortcode, use saved option. '' → omit (no update link).
+		$update_url = $atts['update_url'] ?? get_option( 'crumb_update_url', '' );
+		if ( '' !== $update_url ) {
+			$div .= ' data-update-url="' . esc_attr( trim( $update_url ) ) . '"';
 		}
 
 		$div .= '></div>';
@@ -351,6 +358,7 @@ class Crumb {
 		register_setting( $group, 'crumb_format_ids', 'sanitize_text_field' );
 		register_setting( $group, 'crumb_css_template', 'sanitize_text_field' );
 		register_setting( $group, 'crumb_view', 'sanitize_text_field' );
+		register_setting( $group, 'crumb_update_url', 'sanitize_text_field' );
 		register_setting(
 			$group,
 			'crumb_geolocation_radius',
@@ -387,6 +395,7 @@ class Crumb {
 				'darkMode'          => 'auto',
 				'nowOffset'         => 10,
 				'hideHeader'        => false,
+				'updateUrl'         => 'https://example.org/meeting-update-form/?meeting_id={meeting_id}',
 				'columns'           => [ 'time', 'name', 'location', 'address' ],
 				'map'               => [
 					'tiles'   => [
@@ -493,6 +502,20 @@ class Crumb {
 								Leave empty to use the widget default.
 								Can be overridden per-page via the shortcode <code>geolocation_radius</code> attribute.
 								Overridden by a <code>geolocationRadius</code> key in Widget Configuration below.
+							</p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="crumb_update_url">Update Meeting URL</label></th>
+						<td>
+							<input type="text" id="crumb_update_url" name="crumb_update_url"
+								   value="<?php echo esc_attr( get_option( 'crumb_update_url', '' ) ); ?>"
+								   class="large-text" placeholder="https://example.org/meeting-update-form/?meeting_id={meeting_id}" />
+							<p class="description">
+								Optional. URL template for the <strong>Update Meeting Info</strong> link shown at the bottom of the meeting detail panel.
+								Supported tokens (URL-encoded on substitution): <code>{meeting_id}</code>, <code>{meeting_name}</code>, <code>{server_url}</code>, <code>{return_url}</code>.
+								Works with <a href="https://github.com/bmlt-enabled/bmlt-workflow" target="_blank">bmlt-workflow</a>, any hosted form, or a <code>mailto:</code> URL. Leave empty to hide the link.
+								Can be overridden per-page via the shortcode <code>update_url</code> attribute.
 							</p>
 						</td>
 					</tr>
