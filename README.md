@@ -47,4 +47,13 @@ Configured under **Settings → Crumb**. Settings can be overridden per-shortcod
 
 By default, meeting detail URLs use hash-based routing (`#/monday-night-meeting-42`). To enable clean URLs like `/meetings/monday-night-meeting-42`, enter the page slug (e.g. `meetings`) in the **Base Path for Pretty URLs** setting. After saving, go to **Settings → Permalinks** and click **Save Changes** to update rewrite rules.
 
+## Switching from Crouton
+
+Crumb is an alternative to [crouton](https://wordpress.org/plugins/crouton/) and can drop in without page edits. Just install Crumb and deactivate crouton — existing pages keep working.
+
+* Crouton shortcodes `[bmlt_tabs]`, `[bmlt_map]`, `[crouton_tabs]`, and `[crouton_map]` are registered automatically and translated to the Crumb widget (map shortcodes render with `view="both"`, tabs with `view="list"`).
+* Shortcode attributes `root_server`, `service_body`, `service_body_1`, `formats`, and `report_update_url` are mapped to their Crumb equivalents.
+* Crouton's saved settings (server URL, service body, format IDs, update URL) are used as fallbacks whenever the corresponding Crumb setting is empty.
+* If both plugins are active, crouton continues to handle its own shortcodes; Crumb only takes over once crouton is deactivated.
+
 Full documentation at **[crumb.bmlt.app](https://crumb.bmlt.app/)**.

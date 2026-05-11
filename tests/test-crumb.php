@@ -11,7 +11,7 @@ class Test_Crumb extends WP_UnitTestCase {
 		$GLOBALS['wp_scripts'] = new WP_Scripts();
 		// Reset private statics on Crumb.
 		$ref = new ReflectionClass( Crumb::class );
-		foreach ( [ 'shortcode_geolocation', 'shortcode_geolocation_radius' ] as $prop ) {
+		foreach ( [ 'shortcode_geolocation', 'shortcode_geolocation_radius', 'crouton_options' ] as $prop ) {
 			$p = $ref->getProperty( $prop );
 			$p->setAccessible( true );
 			$p->setValue( null, null );
@@ -545,5 +545,235 @@ class Test_Crumb extends WP_UnitTestCase {
 
 	public function test_cdn_url_constant() {
 		$this->assertSame( 'https://cdn.aws.bmlt.app/crumb-widget.js', Crumb::DEFAULT_CDN_URL );
+	}
+
+	// -------------------------------------------------------------------------
+	// Crouton compatibility — shortcode registration
+	// -------------------------------------------------------------------------
+
+	public function test_crouton_shortcodes_are_registered() {
+		// register_crouton_shortcodes ran on init during bootstrap.
+		$this->assertTrue( shortcode_exists( 'crouton_map' ) );
+		$this->assertTrue( shortcode_exists( 'crouton_tabs' ) );
+		$this->assertTrue( shortcode_exists( 'bmlt_map' ) );
+		$this->assertTrue( shortcode_exists( 'bmlt_tabs' ) );
+	}
+
+	public function test_crouton_shortcodes_appear_in_compat_tags() {
+		$tags = Crumb::compat_tags();
+		$this->assertContains( 'crouton_map', $tags );
+		$this->assertContains( 'crouton_tabs', $tags );
+		$this->assertContains( 'bmlt_map', $tags );
+		$this->assertContains( 'bmlt_tabs', $tags );
+	}
+
+	public function test_register_crouton_shortcodes_does_not_overwrite_existing() {
+		global $shortcode_tags;
+		$saved   = $shortcode_tags['bmlt_tabs'] ?? null;
+		$sentinel = static function () {
+			return 'PRE-EXISTING';
+		};
+		// Remove crumb's and install a sentinel handler.
+		remove_shortcode( 'bmlt_tabs' );
+		add_shortcode( 'bmlt_tabs', $sentinel );
+
+		// Calling register again should NOT overwrite the sentinel.
+		Crumb::register_crouton_shortcodes();
+		$this->assertSame( 'PRE-EXISTING', do_shortcode( '[bmlt_tabs]' ) );
+
+		// Restore crumb's handler for subsequent tests.
+		remove_shortcode( 'bmlt_tabs' );
+		if ( $saved ) {
+			$shortcode_tags['bmlt_tabs'] = $saved;
+		}
+	}
+
+	// -------------------------------------------------------------------------
+	// Crouton compatibility — view mapping
+	// -------------------------------------------------------------------------
+
+	public function test_crouton_map_renders_view_both() {
+		$html = do_shortcode( '[crouton_map]' );
+		$this->assertStringContainsString( 'id="crumb-widget"', $html );
+		$this->assertStringContainsString( 'data-view="both"', $html );
+	}
+
+	public function test_crouton_tabs_renders_view_list() {
+		$html = do_shortcode( '[crouton_tabs]' );
+		$this->assertStringContainsString( 'data-view="list"', $html );
+	}
+
+	public function test_bmlt_map_renders_view_both() {
+		$html = do_shortcode( '[bmlt_map]' );
+		$this->assertStringContainsString( 'data-view="both"', $html );
+	}
+
+	public function test_bmlt_tabs_renders_view_list() {
+		$html = do_shortcode( '[bmlt_tabs]' );
+		$this->assertStringContainsString( 'data-view="list"', $html );
+	}
+
+	// -------------------------------------------------------------------------
+	// Crouton compatibility — attribute translation
+	// -------------------------------------------------------------------------
+
+	public function test_crouton_root_server_attribute_maps_to_data_server() {
+		$html = do_shortcode( '[crouton_map root_server="https://example.com/main_server/"]' );
+		$this->assertStringContainsString( 'data-server="https://example.com/main_server/"', $html );
+	}
+
+	public function test_crouton_service_body_attribute_maps_through() {
+		$html = do_shortcode( '[crouton_tabs service_body="42"]' );
+		$this->assertStringContainsString( 'data-service-body="42"', $html );
+	}
+
+	public function test_crouton_service_body_1_attribute_maps_through() {
+		$html = do_shortcode( '[bmlt_tabs service_body_1="99"]' );
+		$this->assertStringContainsString( 'data-service-body="99"', $html );
+	}
+
+	public function test_crouton_formats_attribute_maps_to_format_ids() {
+		$html = do_shortcode( '[crouton_map formats="17,54"]' );
+		$this->assertStringContainsString( 'data-format-ids="17,54"', $html );
+	}
+
+	public function test_crouton_report_update_url_attribute_maps_to_update_url() {
+		$html = do_shortcode( '[crouton_tabs report_update_url="https://example.org/form/?meeting_id={meeting_id}"]' );
+		$this->assertStringContainsString( 'data-update-url="https://example.org/form/?meeting_id={meeting_id}"', $html );
+	}
+
+	// -------------------------------------------------------------------------
+	// Crouton compatibility — bmlt_tabs_options fallback
+	// -------------------------------------------------------------------------
+
+	public function test_fallback_server_from_crouton_options_when_crumb_unset() {
+		delete_option( 'crumb_server' );
+		update_option(
+			'bmlt_tabs_options',
+			[ 'root_server' => 'https://crouton.example.org/main_server' ]
+		);
+
+		$html = do_shortcode( '[crumb]' );
+		$this->assertStringContainsString( 'data-server="https://crouton.example.org/main_server"', $html );
+
+		delete_option( 'bmlt_tabs_options' );
+	}
+
+	public function test_crumb_option_takes_precedence_over_crouton_fallback() {
+		update_option( 'crumb_server', 'https://crumb.example.org/main_server/' );
+		update_option(
+			'bmlt_tabs_options',
+			[ 'root_server' => 'https://crouton.example.org/main_server' ]
+		);
+
+		$html = do_shortcode( '[crumb]' );
+		$this->assertStringContainsString( 'data-server="https://crumb.example.org/main_server/"', $html );
+		$this->assertStringNotContainsString( 'crouton.example.org', $html );
+
+		delete_option( 'crumb_server' );
+		delete_option( 'bmlt_tabs_options' );
+	}
+
+	public function test_fallback_service_bodies_array_is_joined() {
+		delete_option( 'crumb_service_body' );
+		update_option(
+			'bmlt_tabs_options',
+			[ 'service_bodies' => [ 42, 57, 103 ] ]
+		);
+
+		$html = do_shortcode( '[crumb]' );
+		$this->assertStringContainsString( 'data-service-body="42,57,103"', $html );
+
+		delete_option( 'bmlt_tabs_options' );
+	}
+
+	public function test_fallback_service_body_string() {
+		delete_option( 'crumb_service_body' );
+		update_option(
+			'bmlt_tabs_options',
+			[ 'service_body' => '42' ]
+		);
+
+		$html = do_shortcode( '[crumb]' );
+		$this->assertStringContainsString( 'data-service-body="42"', $html );
+
+		delete_option( 'bmlt_tabs_options' );
+	}
+
+	public function test_fallback_service_bodies_preferred_over_service_body() {
+		delete_option( 'crumb_service_body' );
+		update_option(
+			'bmlt_tabs_options',
+			[
+				'service_bodies' => [ 1, 2 ],
+				'service_body'   => '99',
+			]
+		);
+
+		$html = do_shortcode( '[crumb]' );
+		$this->assertStringContainsString( 'data-service-body="1,2"', $html );
+		$this->assertStringNotContainsString( 'data-service-body="99"', $html );
+
+		delete_option( 'bmlt_tabs_options' );
+	}
+
+	public function test_fallback_formats_to_format_ids() {
+		delete_option( 'crumb_format_ids' );
+		update_option(
+			'bmlt_tabs_options',
+			[ 'formats' => '17,54' ]
+		);
+
+		$html = do_shortcode( '[crumb]' );
+		$this->assertStringContainsString( 'data-format-ids="17,54"', $html );
+
+		delete_option( 'bmlt_tabs_options' );
+	}
+
+	public function test_fallback_report_update_url_to_update_url() {
+		delete_option( 'crumb_update_url' );
+		update_option(
+			'bmlt_tabs_options',
+			[ 'report_update_url' => 'https://example.org/form/?meeting_id={meeting_id}' ]
+		);
+
+		$html = do_shortcode( '[crumb]' );
+		$this->assertStringContainsString( 'data-update-url="https://example.org/form/?meeting_id={meeting_id}"', $html );
+
+		delete_option( 'bmlt_tabs_options' );
+	}
+
+	public function test_get_option_or_crouton_returns_default_when_both_unset() {
+		delete_option( 'crumb_server' );
+		delete_option( 'bmlt_tabs_options' );
+		$this->assertSame(
+			'https://fallback.example.org/main_server/',
+			Crumb::get_option_or_crouton( 'crumb_server', 'https://fallback.example.org/main_server/' )
+		);
+	}
+
+	public function test_get_option_or_crouton_with_unmapped_key_returns_default() {
+		// crumb_view has no crouton equivalent — fallback should be default.
+		delete_option( 'crumb_view' );
+		update_option( 'bmlt_tabs_options', [ 'root_server' => 'https://x/main_server' ] );
+		$this->assertSame( 'default-val', Crumb::get_option_or_crouton( 'crumb_view', 'default-val' ) );
+		delete_option( 'bmlt_tabs_options' );
+	}
+
+	public function test_crouton_shortcode_combines_attribute_and_fallback() {
+		// root_server from crouton fallback; service_body from shortcode att.
+		delete_option( 'crumb_server' );
+		delete_option( 'crumb_service_body' );
+		update_option(
+			'bmlt_tabs_options',
+			[ 'root_server' => 'https://fallback.example.org/main_server' ]
+		);
+
+		$html = do_shortcode( '[crouton_map service_body="7"]' );
+		$this->assertStringContainsString( 'data-server="https://fallback.example.org/main_server"', $html );
+		$this->assertStringContainsString( 'data-service-body="7"', $html );
+		$this->assertStringContainsString( 'data-view="both"', $html );
+
+		delete_option( 'bmlt_tabs_options' );
 	}
 }
