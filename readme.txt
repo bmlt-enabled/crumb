@@ -5,7 +5,7 @@ Tags: narcotics anonymous, na, meetings, bmlt, meeting finder
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 1.3.2
+Stable tag: 1.3.3
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -124,6 +124,9 @@ The widget fetches meeting data from a BMLT server whose URL you configure in Se
 
 == Changelog ==
 
+= 1.3.3 =
+* Crouton compatibility: `show_map="1"` on `[bmlt_tabs]` or `[crouton_tabs]` now renders the Crumb widget with `view="both"` (map + list), matching crouton's behavior when a map is requested alongside the tabbed listing.
+
 = 1.3.2 =
 * Extended the crouton compatibility layer to register empty-string stubs for crouton's helper shortcodes (`[bmlt_count]`, `[meeting_count]`, `[group_count]`, `[service_body_names]`, `[root_service_body]`, `[bmlt_handlebar]`, `[init_crouton]`) so pages don't render the literal shortcode text after crouton is deactivated. These have no Crumb equivalent and output nothing; the surrounding page content remains intact.
 
@@ -166,6 +169,9 @@ The widget fetches meeting data from a BMLT server whose URL you configure in Se
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.3.3 =
+Honors `show_map="1"` on tabs shortcodes by switching the Crumb widget to `view="both"`. Safe to update.
 
 = 1.3.2 =
 Suppresses literal `[bmlt_count]`, `[meeting_count]`, `[group_count]`, `[service_body_names]`, `[root_service_body]`, `[bmlt_handlebar]`, and `[init_crouton]` shortcode text on pages after crouton is deactivated. Safe to update.

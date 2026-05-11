@@ -637,6 +637,31 @@ class Test_Crumb extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'data-format-ids="17,54"', $html );
 	}
 
+	public function test_crouton_show_map_1_upgrades_tabs_to_both() {
+		$html = do_shortcode( '[bmlt_tabs show_map="1"]' );
+		$this->assertStringContainsString( 'data-view="both"', $html );
+	}
+
+	public function test_crouton_show_map_1_upgrades_crouton_tabs_to_both() {
+		$html = do_shortcode( '[crouton_tabs show_map="1"]' );
+		$this->assertStringContainsString( 'data-view="both"', $html );
+	}
+
+	public function test_crouton_show_map_0_keeps_default_tabs_view() {
+		$html = do_shortcode( '[bmlt_tabs show_map="0"]' );
+		$this->assertStringContainsString( 'data-view="list"', $html );
+	}
+
+	public function test_crouton_no_show_map_attr_keeps_default_view() {
+		$html = do_shortcode( '[bmlt_tabs]' );
+		$this->assertStringContainsString( 'data-view="list"', $html );
+	}
+
+	public function test_crouton_show_map_1_on_map_shortcode_stays_both() {
+		$html = do_shortcode( '[bmlt_map show_map="1"]' );
+		$this->assertStringContainsString( 'data-view="both"', $html );
+	}
+
 	public function test_crouton_report_update_url_attribute_maps_to_update_url() {
 		$html = do_shortcode( '[crouton_tabs report_update_url="https://example.org/form/?meeting_id={meeting_id}"]' );
 		$this->assertStringContainsString( 'data-update-url="https://example.org/form/?meeting_id={meeting_id}"', $html );

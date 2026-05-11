@@ -3,7 +3,7 @@
  * Plugin Name: Crumb
  * Plugin URI: https://wordpress.org/plugins/crumb/
  * Description: Embeds the Crumb meeting finder widget on any page or post using a shortcode.
- * Version: 1.3.2
+ * Version: 1.3.3
  * Author: bmltenabled
  * Author URI: https://bmlt.app
  * License: GPL v2 or later
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'CRUMB_VERSION', '1.3.2' );
+define( 'CRUMB_VERSION', '1.3.3' );
 
 class Crumb {
 
@@ -199,6 +199,12 @@ class Crumb {
 	public static function crouton_compat_shortcode( $atts, string $view ): string {
 		$atts       = is_array( $atts ) ? $atts : [];
 		$translated = [ 'view' => $view ];
+
+		// Crouton's show_map="1" explicitly asks for a map alongside the listing;
+		// honor it by upgrading the tag's default view to "both".
+		if ( isset( $atts['show_map'] ) && '1' === (string) $atts['show_map'] ) {
+			$translated['view'] = 'both';
+		}
 
 		if ( isset( $atts['root_server'] ) ) {
 			$translated['server'] = $atts['root_server'];
