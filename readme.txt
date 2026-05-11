@@ -5,7 +5,7 @@ Tags: narcotics anonymous, na, meetings, bmlt, meeting finder
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 1.3.3
+Stable tag: 1.4.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -41,6 +41,7 @@ Shortcode attributes:
 * `geolocation` — Enable or disable geolocation for this page: `true` or `false`
 * `geolocation_radius` — Geolocation search radius. Positive integer = fixed radius in miles (or km per server settings). Negative integer = BMLT auto-radius: the server expands the search until it finds roughly that many meetings (e.g. `-50` finds ~50 nearby meetings). Overrides the Geolocation Radius setting and Widget Configuration.
 * `update_url` — URL template for the **Update Meeting Info** link shown at the bottom of the meeting detail panel. Supports tokens `{meeting_id}`, `{meeting_name}`, `{server_url}`, `{return_url}` (URL-encoded on substitution). Works with bmlt-workflow, hosted forms, or `mailto:` URLs.
+* `columns` — Comma-separated list of columns to show in list view (e.g. `time,name,location,address,service_body`). Omit a name to hide that column. Leave unset to use the widget default.
 
 = Switching from Crouton =
 
@@ -124,6 +125,10 @@ The widget fetches meeting data from a BMLT server whose URL you configure in Se
 
 == Changelog ==
 
+= 1.4.0 =
+* Added `columns` shortcode attribute — comma-separated list of columns to show in list view (e.g. `[crumb columns="time,name,location,address,service_body"]`). Omit a name to hide that column. Pairs with the new `data-columns` reader in the Crumb widget; leave unset to use the widget default.
+* Crouton compatibility: `has_areas` and `has_regions` on `[bmlt_tabs]` / `[bmlt_map]` / `[crouton_tabs]` / `[crouton_map]` now add the `service_body` column to the widget output, preserving crouton's behavior of surfacing the originating service body in the listing.
+
 = 1.3.3 =
 * Crouton compatibility: `show_map="1"` on `[bmlt_tabs]` or `[crouton_tabs]` now renders the Crumb widget with `view="both"` (map + list), matching crouton's behavior when a map is requested alongside the tabbed listing.
 
@@ -169,6 +174,9 @@ The widget fetches meeting data from a BMLT server whose URL you configure in Se
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.4.0 =
+Adds `columns` shortcode attribute for selecting which columns appear in list view, and maps crouton's `has_areas` / `has_regions` to include the `service_body` column. Safe to update.
 
 = 1.3.3 =
 Honors `show_map="1"` on tabs shortcodes by switching the Crumb widget to `view="both"`. Safe to update.

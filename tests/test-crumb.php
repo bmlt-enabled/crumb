@@ -111,6 +111,26 @@ class Test_Crumb extends WP_UnitTestCase {
 		$this->assertStringNotContainsString( 'data-format-ids', $html );
 	}
 
+	public function test_shortcode_columns_attribute_emits_data_columns() {
+		$html = do_shortcode( '[crumb columns="time,name,location,address,service_body"]' );
+		$this->assertStringContainsString( 'data-columns="time,name,location,address,service_body"', $html );
+	}
+
+	public function test_shortcode_columns_trimmed() {
+		$html = do_shortcode( '[crumb columns="  time,name  "]' );
+		$this->assertStringContainsString( 'data-columns="time,name"', $html );
+	}
+
+	public function test_shortcode_empty_columns_omits_attribute() {
+		$html = do_shortcode( '[crumb columns=""]' );
+		$this->assertStringNotContainsString( 'data-columns', $html );
+	}
+
+	public function test_shortcode_no_columns_attribute_omits_data_attribute() {
+		$html = do_shortcode( '[crumb]' );
+		$this->assertStringNotContainsString( 'data-columns', $html );
+	}
+
 	// -------------------------------------------------------------------------
 	// update_url shortcode attribute and option
 	// -------------------------------------------------------------------------
@@ -665,6 +685,36 @@ class Test_Crumb extends WP_UnitTestCase {
 	public function test_crouton_report_update_url_attribute_maps_to_update_url() {
 		$html = do_shortcode( '[crouton_tabs report_update_url="https://example.org/form/?meeting_id={meeting_id}"]' );
 		$this->assertStringContainsString( 'data-update-url="https://example.org/form/?meeting_id={meeting_id}"', $html );
+	}
+
+	public function test_crouton_has_areas_adds_service_body_column() {
+		$html = do_shortcode( '[bmlt_tabs has_areas="1"]' );
+		$this->assertStringContainsString( 'data-columns="time,distance,name,location,address,service_body"', $html );
+	}
+
+	public function test_crouton_has_regions_adds_service_body_column() {
+		$html = do_shortcode( '[crouton_map has_regions="1"]' );
+		$this->assertStringContainsString( 'data-columns="time,distance,name,location,address,service_body"', $html );
+	}
+
+	public function test_crouton_has_areas_true_adds_service_body_column() {
+		$html = do_shortcode( '[bmlt_tabs has_areas="true"]' );
+		$this->assertStringContainsString( 'data-columns="time,distance,name,location,address,service_body"', $html );
+	}
+
+	public function test_crouton_has_areas_zero_does_not_add_columns() {
+		$html = do_shortcode( '[bmlt_tabs has_areas="0"]' );
+		$this->assertStringNotContainsString( 'data-columns', $html );
+	}
+
+	public function test_crouton_no_has_areas_or_has_regions_omits_columns() {
+		$html = do_shortcode( '[bmlt_tabs]' );
+		$this->assertStringNotContainsString( 'data-columns', $html );
+	}
+
+	public function test_crouton_has_areas_on_map_shortcode_adds_service_body_column() {
+		$html = do_shortcode( '[bmlt_map has_areas="1"]' );
+		$this->assertStringContainsString( 'data-columns="time,distance,name,location,address,service_body"', $html );
 	}
 
 	// -------------------------------------------------------------------------

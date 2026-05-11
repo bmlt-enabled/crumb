@@ -3,7 +3,7 @@
  * Plugin Name: Crumb
  * Plugin URI: https://wordpress.org/plugins/crumb/
  * Description: Embeds the Crumb meeting finder widget on any page or post using a shortcode.
- * Version: 1.3.3
+ * Version: 1.4.0
  * Author: bmltenabled
  * Author URI: https://bmlt.app
  * License: GPL v2 or later
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'CRUMB_VERSION', '1.3.3' );
+define( 'CRUMB_VERSION', '1.4.0' );
 
 class Crumb {
 
@@ -221,6 +221,16 @@ class Crumb {
 			$translated['update_url'] = $atts['report_update_url'];
 		}
 
+		// Crouton's has_areas / has_regions toggles surface the originating service body in
+		// the listing. Emit the default columns plus service_body so that information stays visible.
+		$wants_service_body = (
+			( isset( $atts['has_areas'] ) && filter_var( $atts['has_areas'], FILTER_VALIDATE_BOOLEAN ) ) ||
+			( isset( $atts['has_regions'] ) && filter_var( $atts['has_regions'], FILTER_VALIDATE_BOOLEAN ) )
+		);
+		if ( $wants_service_body && ! isset( $translated['columns'] ) ) {
+			$translated['columns'] = 'time,distance,name,location,address,service_body';
+		}
+
 		return self::setup_shortcode( $translated );
 	}
 
@@ -243,6 +253,7 @@ class Crumb {
 				'geolocation'        => null,
 				'geolocation_radius' => null,
 				'update_url'         => null,
+				'columns'            => null,
 			],
 			$atts,
 			'crumb'
@@ -303,6 +314,11 @@ class Crumb {
 		$update_url = $atts['update_url'] ?? self::get_option_or_crouton( 'crumb_update_url', '' );
 		if ( '' !== $update_url ) {
 			$div .= ' data-update-url="' . esc_attr( trim( $update_url ) ) . '"';
+		}
+
+		// Comma-separated list of columns; widget validates the values.
+		if ( null !== $atts['columns'] && '' !== trim( (string) $atts['columns'] ) ) {
+			$div .= ' data-columns="' . esc_attr( trim( (string) $atts['columns'] ) ) . '"';
 		}
 
 		$div .= '></div>';
