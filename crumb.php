@@ -3,7 +3,7 @@
  * Plugin Name: Crumb
  * Plugin URI: https://wordpress.org/plugins/crumb/
  * Description: Embeds the Crumb meeting finder widget on any page or post using a shortcode.
- * Version: 1.3.0
+ * Version: 1.3.1
  * Author: bmltenabled
  * Author URI: https://bmlt.app
  * License: GPL v2 or later
@@ -15,16 +15,30 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'CRUMB_VERSION', '1.3.0' );
+define( 'CRUMB_VERSION', '1.3.1' );
 
 class Crumb {
 
 	private static ?self $instance = null;
 	private static ?bool $shortcode_geolocation        = null;
 	private static ?int $shortcode_geolocation_radius = null;
+	private static ?array $crouton_options             = null;
+	private static array $compat_tags                  = [];
 
 	const DEFAULT_CDN_URL = 'https://cdn.aws.bmlt.app/crumb-widget.js';
 	const REWRITE_VERSION = '1';
+
+	/**
+	 * Tag → forced view for crouton-named shortcodes.
+	 * Map-flavored tags become "both" (map + list) so users don't lose the list view
+	 * they previously saw next to the map. Tabs become plain list.
+	 */
+	const CROUTON_VIEW_MAP = [
+		'crouton_map'  => 'both',
+		'crouton_tabs' => 'list',
+		'bmlt_map'     => 'both',
+		'bmlt_tabs'    => 'list',
+	];
 
 	public static function get_instance(): self {
 		if ( null === self::$instance ) {
@@ -40,6 +54,8 @@ class Crumb {
 		add_action( 'admin_menu', [ static::class, 'admin_menu' ] );
 		add_action( 'admin_init', [ static::class, 'register_settings' ] );
 		add_action( 'init', [ static::class, 'init_rewrite_rules' ] );
+		// Priority 20 so this runs after crouton (if active) has registered its own shortcodes.
+		add_action( 'init', [ static::class, 'register_crouton_shortcodes' ], 20 );
 		add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), [ static::class, 'settings_link' ] );
 	}
 
@@ -91,6 +107,99 @@ class Crumb {
 	}
 
 	// -------------------------------------------------------------------------
+	// Crouton Compatibility
+	//
+	// Lets sites running the crouton plugin switch to crumb without editing
+	// pages. Crouton-named shortcodes are mapped to [crumb] output, and crouton's
+	// saved settings (bmlt_tabs_options) are used as a fallback whenever the
+	// matching crumb_* option is empty.
+	// -------------------------------------------------------------------------
+
+	private static function crouton_options(): array {
+		if ( null === self::$crouton_options ) {
+			$opts                   = get_option( 'bmlt_tabs_options', [] );
+			self::$crouton_options  = is_array( $opts ) ? $opts : [];
+		}
+		return self::$crouton_options;
+	}
+
+	/**
+	 * Map a crumb option key to the matching value from crouton's bmlt_tabs_options.
+	 * Returns '' if there is no equivalent or it's unset.
+	 */
+	private static function crouton_fallback_value( string $crumb_key ): string {
+		$opts = self::crouton_options();
+		switch ( $crumb_key ) {
+			case 'crumb_server':
+				return isset( $opts['root_server'] ) ? (string) $opts['root_server'] : '';
+			case 'crumb_service_body':
+				if ( ! empty( $opts['service_bodies'] ) && is_array( $opts['service_bodies'] ) ) {
+					return implode( ',', array_map( 'intval', $opts['service_bodies'] ) );
+				}
+				return isset( $opts['service_body'] ) ? (string) $opts['service_body'] : '';
+			case 'crumb_format_ids':
+				return isset( $opts['formats'] ) ? (string) $opts['formats'] : '';
+			case 'crumb_update_url':
+				return isset( $opts['report_update_url'] ) ? (string) $opts['report_update_url'] : '';
+		}
+		return '';
+	}
+
+	/**
+	 * Like get_option(), but falls back to the equivalent key in bmlt_tabs_options
+	 * when the crumb option is empty/missing. Final fallback is $default.
+	 */
+	public static function get_option_or_crouton( string $crumb_key, string $default = '' ): string {
+		$value = get_option( $crumb_key, '' );
+		if ( '' !== trim( (string) $value ) ) {
+			return (string) $value;
+		}
+		$fallback = self::crouton_fallback_value( $crumb_key );
+		return '' !== $fallback ? $fallback : $default;
+	}
+
+	public static function register_crouton_shortcodes(): void {
+		foreach ( self::CROUTON_VIEW_MAP as $tag => $view ) {
+			if ( shortcode_exists( $tag ) ) {
+				continue;
+			}
+			self::$compat_tags[] = $tag;
+			add_shortcode(
+				$tag,
+				static function ( $atts ) use ( $view ) {
+					return self::crouton_compat_shortcode( $atts, $view );
+				}
+			);
+		}
+	}
+
+	public static function crouton_compat_shortcode( $atts, string $view ): string {
+		$atts       = is_array( $atts ) ? $atts : [];
+		$translated = [ 'view' => $view ];
+
+		if ( isset( $atts['root_server'] ) ) {
+			$translated['server'] = $atts['root_server'];
+		}
+		if ( isset( $atts['service_body'] ) ) {
+			$translated['service_body'] = $atts['service_body'];
+		} elseif ( isset( $atts['service_body_1'] ) ) {
+			$translated['service_body'] = $atts['service_body_1'];
+		}
+		if ( isset( $atts['formats'] ) ) {
+			$translated['format_ids'] = $atts['formats'];
+		}
+		if ( isset( $atts['report_update_url'] ) ) {
+			$translated['update_url'] = $atts['report_update_url'];
+		}
+
+		return self::setup_shortcode( $translated );
+	}
+
+	public static function compat_tags(): array {
+		return self::$compat_tags;
+	}
+
+	// -------------------------------------------------------------------------
 	// Shortcode
 	// -------------------------------------------------------------------------
 
@@ -123,7 +232,8 @@ class Crumb {
 		}
 
 		// Shortcode attribute takes precedence; fall back to saved option only when not provided.
-		$server = esc_url( trim( $atts['server'] ?? get_option( 'crumb_server', 'https://latest.aws.bmlt.app/main_server/' ) ) );
+		// Crouton settings (bmlt_tabs_options) are used as a fallback when the crumb option is empty.
+		$server = esc_url( trim( $atts['server'] ?? self::get_option_or_crouton( 'crumb_server', 'https://latest.aws.bmlt.app/main_server/' ) ) );
 
 		if ( empty( $server ) ) {
 			return '<p style="color:red"><strong>Crumb:</strong> a <code>server</code> URL is required.</p>';
@@ -131,10 +241,10 @@ class Crumb {
 
 		// null  → not in shortcode, use saved option.
 		// ''    → explicitly set to empty in shortcode, omit data-service-body (show all meetings).
-		$service_body = $atts['service_body'] ?? get_option( 'crumb_service_body', '1047,1048' );
+		$service_body = $atts['service_body'] ?? self::get_option_or_crouton( 'crumb_service_body', '1047,1048' );
 
 		// null → not in shortcode, use saved option. '' → omit (no format lock).
-		$format_ids = $atts['format_ids'] ?? get_option( 'crumb_format_ids', '' );
+		$format_ids = $atts['format_ids'] ?? self::get_option_or_crouton( 'crumb_format_ids', '' );
 
 		// Resolve view: shortcode attr → saved option → omit (widget uses its own default).
 		$view_raw     = $atts['view'] ?? get_option( 'crumb_view', '' );
@@ -161,7 +271,7 @@ class Crumb {
 		}
 
 		// null → not in shortcode, use saved option. '' → omit (no update link).
-		$update_url = $atts['update_url'] ?? get_option( 'crumb_update_url', '' );
+		$update_url = $atts['update_url'] ?? self::get_option_or_crouton( 'crumb_update_url', '' );
 		if ( '' !== $update_url ) {
 			$div .= ' data-update-url="' . esc_attr( trim( $update_url ) ) . '"';
 		}
@@ -187,7 +297,21 @@ class Crumb {
 
 	public static function assets(): void {
 		global $post;
-		if ( ! $post || ! has_shortcode( $post->post_content, 'crumb' ) ) {
+		if ( ! $post ) {
+			return;
+		}
+
+		// Check for [crumb] plus any crouton-named tags this plugin actually registered.
+		// (Tags claimed by an active crouton plugin won't be in self::$compat_tags.)
+		$tags  = array_merge( [ 'crumb' ], self::$compat_tags );
+		$found = false;
+		foreach ( $tags as $tag ) {
+			if ( has_shortcode( $post->post_content, $tag ) ) {
+				$found = true;
+				break;
+			}
+		}
+		if ( ! $found ) {
 			return;
 		}
 
@@ -427,7 +551,7 @@ class Crumb {
 						<th scope="row"><label for="crumb_server">BMLT Server URL</label></th>
 						<td>
 							<input type="url" id="crumb_server" name="crumb_server"
-								   value="<?php echo esc_attr( get_option( 'crumb_server', 'https://latest.aws.bmlt.app/main_server/' ) ); ?>"
+								   value="<?php echo esc_attr( self::get_option_or_crouton( 'crumb_server', 'https://latest.aws.bmlt.app/main_server/' ) ); ?>"
 								   class="regular-text" placeholder="https://your-server/main_server" />
 							<p class="description">Required. The full URL to your BMLT Server.</p>
 						</td>
@@ -436,7 +560,7 @@ class Crumb {
 						<th scope="row"><label for="crumb_service_body">Service Body IDs</label></th>
 						<td>
 							<input type="text" id="crumb_service_body" name="crumb_service_body"
-								   value="<?php echo esc_attr( get_option( 'crumb_service_body', '1047,1048' ) ); ?>"
+								   value="<?php echo esc_attr( self::get_option_or_crouton( 'crumb_service_body', '1047,1048' ) ); ?>"
 								   class="regular-text" placeholder="42 or 42,57,103" />
 							<p class="description">Optional. Single ID or comma-separated list. Leave empty to show all meetings. Child service bodies are always included.</p>
 						</td>
@@ -445,7 +569,7 @@ class Crumb {
 						<th scope="row"><label for="crumb_format_ids">Format IDs</label></th>
 						<td>
 							<input type="text" id="crumb_format_ids" name="crumb_format_ids"
-								   value="<?php echo esc_attr( get_option( 'crumb_format_ids', '' ) ); ?>"
+								   value="<?php echo esc_attr( self::get_option_or_crouton( 'crumb_format_ids', '' ) ); ?>"
 								   class="regular-text" placeholder="17 or 17,54,78" />
 							<p class="description">Optional. Single ID or comma-separated list of BMLT format IDs to lock the widget to. Leave empty to show all formats. Can be overridden per-page via the shortcode <code>format_ids</code> attribute.</p>
 						</td>
@@ -509,7 +633,7 @@ class Crumb {
 						<th scope="row"><label for="crumb_update_url">Update Meeting URL</label></th>
 						<td>
 							<input type="text" id="crumb_update_url" name="crumb_update_url"
-								   value="<?php echo esc_attr( get_option( 'crumb_update_url', '' ) ); ?>"
+								   value="<?php echo esc_attr( self::get_option_or_crouton( 'crumb_update_url', '' ) ); ?>"
 								   class="large-text" placeholder="https://example.org/meeting-update-form/?meeting_id={meeting_id}" />
 							<p class="description">
 								Optional. URL template for the <strong>Update Meeting Info</strong> link shown at the bottom of the meeting detail panel.

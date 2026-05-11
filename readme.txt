@@ -5,7 +5,7 @@ Tags: narcotics anonymous, na, meetings, bmlt, meeting finder
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 1.3.0
+Stable tag: 1.3.1
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -41,6 +41,15 @@ Shortcode attributes:
 * `geolocation` — Enable or disable geolocation for this page: `true` or `false`
 * `geolocation_radius` — Geolocation search radius. Positive integer = fixed radius in miles (or km per server settings). Negative integer = BMLT auto-radius: the server expands the search until it finds roughly that many meetings (e.g. `-50` finds ~50 nearby meetings). Overrides the Geolocation Radius setting and Widget Configuration.
 * `update_url` — URL template for the **Update Meeting Info** link shown at the bottom of the meeting detail panel. Supports tokens `{meeting_id}`, `{meeting_name}`, `{server_url}`, `{return_url}` (URL-encoded on substitution). Works with bmlt-workflow, hosted forms, or `mailto:` URLs.
+
+= Switching from Crouton =
+
+Crumb is an alternative to the [crouton](https://wordpress.org/plugins/crouton/) plugin and can drop in without page edits in most cases. Activating Crumb will:
+
+* Register the crouton shortcodes (`[bmlt_tabs]`, `[bmlt_map]`, `[crouton_tabs]`, `[crouton_map]`) and translate them to the Crumb widget. Map shortcodes render with `view="both"` (map + list) and tabs shortcodes render with `view="list"`. Shortcode attributes `root_server`, `service_body`, `service_body_1`, `formats`, and `report_update_url` are mapped to their Crumb equivalents.
+* Reuse crouton's saved settings as fallbacks when the corresponding Crumb option is empty (BMLT server URL, service bodies, format IDs, update URL). Open **Settings → Crumb** to confirm the inherited values and click **Save Changes** to persist them.
+
+Crumb only handles those shortcodes when crouton is deactivated — if both plugins are active, crouton continues to handle its own shortcodes. To switch: install Crumb, then deactivate crouton. No page edits required.
 
 = Documentation =
 
@@ -79,6 +88,10 @@ Yes. Append `?view=list` or `?view=map` to any page URL that contains the `[crum
 
 The shortcode works in any context that processes WordPress shortcodes. If your page builder does not render shortcodes automatically, use its dedicated shortcode block.
 
+= I'm switching from the crouton plugin — do I have to edit my pages? =
+
+No. Crumb registers the crouton shortcodes (`[bmlt_tabs]`, `[bmlt_map]`, `[crouton_tabs]`, `[crouton_map]`) and renders them with the Crumb widget. It also reads crouton's saved settings (server URL, service body, format IDs, update URL) as fallbacks. Just install Crumb, deactivate crouton, and existing pages keep working. See the **Switching from Crouton** section above for details.
+
 == External services ==
 
 This plugin relies on two external services. Both are part of the BMLT (Basic Meeting List Toolkit) ecosystem — free, open-source tools built for Narcotics Anonymous service bodies (https://bmlt.app).
@@ -110,6 +123,10 @@ The widget fetches meeting data from a BMLT server whose URL you configure in Se
 2. Map view — meeting locations plotted on an interactive map with the same search and filter controls.
 
 == Changelog ==
+
+= 1.3.1 =
+* Added compatibility layer for the [crouton](https://wordpress.org/plugins/crouton/) plugin. Crumb now registers `[bmlt_tabs]`, `[bmlt_map]`, `[crouton_tabs]`, and `[crouton_map]` shortcodes and renders them with the Crumb widget when crouton is not active. Shortcode attributes (`root_server`, `service_body`, `service_body_1`, `formats`, `report_update_url`) are translated automatically.
+* Crumb falls back to crouton's saved settings (server URL, service body, format IDs, update URL) when the corresponding Crumb option is empty — installing and activating is enough; no page or settings edits required.
 
 = 1.3.0 =
 * Added **Update Meeting URL** setting and `update_url` shortcode attribute — URL template that powers the "Update Meeting Info" link on the meeting detail panel. Supports tokens `{meeting_id}`, `{meeting_name}`, `{server_url}`, and `{return_url}` (URL-encoded on substitution). Works with [bmlt-workflow](https://github.com/bmlt-enabled/bmlt-workflow), arbitrary hosted forms, or `mailto:` URLs. Leave empty to hide the link.
@@ -146,6 +163,9 @@ The widget fetches meeting data from a BMLT server whose URL you configure in Se
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.3.1 =
+Adds drop-in compatibility for the crouton plugin: crouton shortcodes (`[bmlt_tabs]`, `[bmlt_map]`, `[crouton_tabs]`, `[crouton_map]`) now render with the Crumb widget and crouton's saved settings are used as fallbacks. Safe to update.
 
 = 1.3.0 =
 Adds Update Meeting URL setting and `update_url` shortcode attribute for the configurable "Update Meeting Info" link. Safe to update.
