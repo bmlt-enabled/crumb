@@ -5,7 +5,7 @@ Tags: narcotics anonymous, na, meetings, bmlt, meeting finder
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 1.5.0
+Stable tag: 1.6.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -43,12 +43,13 @@ Shortcode attributes:
 * `update_url` — URL template for the **Update Meeting Info** link shown at the bottom of the meeting detail panel. Supports tokens `{meeting_id}`, `{meeting_name}`, `{server_url}`, `{return_url}` (URL-encoded on substitution). Works with bmlt-workflow, hosted forms, or `mailto:` URLs.
 * `columns` — Comma-separated list of columns to show in list view (e.g. `time,name,location,address,service_body`). Omit a name to hide that column. Leave unset to use the widget default.
 * `language` — Force the widget UI language for this page (e.g. `en`, `es`, `fr`, `de`, `pt`, `it`, `sv`, `da`, `el`, `fa`, `pl`, `ru`, `ja`). Leave unset to auto-detect from the visitor's browser.
+* `query` — Raw BMLT query string passed through to the widget's `rawQuery()` for filters the structured options can't express (e.g. multi-value `meeting_key_value[]`). When set, this **replaces** the default load entirely — `service_body`, `format_ids`, and `?services` are ignored — and forces geolocation off (the widget can't safely layer lat/long/geo_width on top of an arbitrary query). Encode brackets as `%5B` / `%5D` because WordPress shortcodes can't contain literal `[` or `]`. Example: `[crumb query="meeting_key=location_nation&meeting_key_value%5B%5D=USA"]`. Shortcode-only; no admin setting.
 
 = Switching from Crouton =
 
 Crumb is an alternative to the [crouton](https://wordpress.org/plugins/crouton/) plugin and can drop in without page edits in most cases. Activating Crumb will:
 
-* Register the crouton shortcodes (`[bmlt_tabs]`, `[bmlt_map]`, `[crouton_tabs]`, `[crouton_map]`) and translate them to the Crumb widget. Map shortcodes render with `view="both"` (map + list) and tabs shortcodes render with `view="list"`. Shortcode attributes `root_server`, `service_body`, `service_body_1`, `formats`, and `report_update_url` are mapped to their Crumb equivalents.
+* Register the crouton shortcodes (`[bmlt_tabs]`, `[bmlt_map]`, `[crouton_tabs]`, `[crouton_map]`) and translate them to the Crumb widget. Map shortcodes render with `view="both"` (map + list) and tabs shortcodes render with `view="list"`. Shortcode attributes `root_server`, `service_body`, `service_body_1`, `formats`, `report_update_url`, and `query_string` are mapped to their Crumb equivalents (`query_string` becomes `data-query` and routes through the widget's `rawQuery()`).
 * Reuse crouton's saved settings as fallbacks when the corresponding Crumb option is empty (BMLT server URL, service bodies, format IDs, update URL). Open **Settings → Crumb** to confirm the inherited values and click **Save Changes** to persist them.
 
 Crumb only handles those shortcodes when crouton is deactivated — if both plugins are active, crouton continues to handle its own shortcodes. To switch: install Crumb, then deactivate crouton. No page edits required.
@@ -126,6 +127,10 @@ The widget fetches meeting data from a BMLT server whose URL you configure in Se
 
 == Changelog ==
 
+= 1.6.0 =
+* Added `query` shortcode attribute — raw BMLT query string passed through to the Crumb widget's `rawQuery()` for filters the structured options can't express (e.g. multi-value `meeting_key_value[]`). When set, it replaces the default load entirely (`service_body` / `format_ids` are ignored) and forces geolocation off so geo params can't be layered on top. Shortcode-only; no admin setting. Encode brackets as `%5B` / `%5D` because WordPress shortcodes can't contain literal `[` or `]`. Requires Crumb Widget 1.5.0+.
+* Crouton compatibility: `query_string` on `[bmlt_tabs]` / `[bmlt_map]` / `[crouton_tabs]` / `[crouton_map]` now maps to the new `data-query` data attribute, preserving the crouton behavior of appending a raw BMLT query.
+
 = 1.5.0 =
 * Added **Language** setting on the global settings page and matching `language` shortcode attribute (e.g. `[crumb language="es"]`). Forces the widget UI language; leave empty to auto-detect from the visitor's browser. Supported codes: `en`, `es`, `fr`, `de`, `pt`, `it`, `sv`, `da`, `el`, `fa`, `pl`, `ru`, `ja`. Per-shortcode value overrides the saved setting; `widget_config` JSON `language` key still wins over both.
 
@@ -178,6 +183,9 @@ The widget fetches meeting data from a BMLT server whose URL you configure in Se
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.6.0 =
+Adds `query` shortcode attribute and maps crouton's `query_string` to the Crumb widget's new raw-query support. Safe to update.
 
 = 1.4.0 =
 Adds `columns` shortcode attribute for selecting which columns appear in list view, and maps crouton's `has_areas` / `has_regions` to include the `service_body` column. Safe to update.

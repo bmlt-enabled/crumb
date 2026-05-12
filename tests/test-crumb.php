@@ -132,6 +132,46 @@ class Test_Crumb extends WP_UnitTestCase {
 	}
 
 	// -------------------------------------------------------------------------
+	// query shortcode attribute (raw BMLT query → data-query)
+	// -------------------------------------------------------------------------
+
+	// WordPress's shortcode parser terminates on a literal `[` / `]` inside an attribute
+	// value, so embedders must URL-encode brackets as %5B / %5D (e.g. meeting_key_value%5B%5D=USA).
+	// The widget passes the value straight to rawQuery(), which the BMLT server decodes.
+	public function test_shortcode_query_attribute_emits_data_query() {
+		$html = do_shortcode( '[crumb query="meeting_key=location_nation&meeting_key_value%5B%5D=USA"]' );
+		$this->assertStringContainsString( 'data-query="meeting_key=location_nation&amp;meeting_key_value%5B%5D=USA"', $html );
+	}
+
+	public function test_shortcode_query_attribute_trimmed() {
+		$html = do_shortcode( '[crumb query="  weekdays=2  "]' );
+		$this->assertStringContainsString( 'data-query="weekdays=2"', $html );
+	}
+
+	public function test_shortcode_empty_query_omits_attribute() {
+		$html = do_shortcode( '[crumb query=""]' );
+		$this->assertStringNotContainsString( 'data-query', $html );
+	}
+
+	public function test_shortcode_no_query_attribute_omits_data_attribute() {
+		$html = do_shortcode( '[crumb]' );
+		$this->assertStringNotContainsString( 'data-query', $html );
+	}
+
+	public function test_shortcode_query_escapes_html_attributes() {
+		$html = do_shortcode( '[crumb query=\'"><script>alert(1)</script>\']' );
+		$this->assertStringNotContainsString( '<script>alert(1)</script>', $html );
+	}
+
+	public function test_shortcode_query_has_no_saved_option_fallback() {
+		// query is shortcode-only — there is no crumb_query option.
+		update_option( 'crumb_query', 'should-be-ignored' );
+		$html = do_shortcode( '[crumb]' );
+		$this->assertStringNotContainsString( 'data-query', $html );
+		delete_option( 'crumb_query' );
+	}
+
+	// -------------------------------------------------------------------------
 	// update_url shortcode attribute and option
 	// -------------------------------------------------------------------------
 
@@ -771,6 +811,22 @@ class Test_Crumb extends WP_UnitTestCase {
 	public function test_crouton_report_update_url_attribute_maps_to_update_url() {
 		$html = do_shortcode( '[crouton_tabs report_update_url="https://example.org/form/?meeting_id={meeting_id}"]' );
 		$this->assertStringContainsString( 'data-update-url="https://example.org/form/?meeting_id={meeting_id}"', $html );
+	}
+
+	public function test_crouton_query_string_attribute_maps_to_data_query() {
+		// Same WordPress shortcode limitation as the [crumb query=...] case: brackets must be encoded.
+		$html = do_shortcode( '[crouton_map query_string="meeting_key=location_nation&meeting_key_value%5B%5D=USA"]' );
+		$this->assertStringContainsString( 'data-query="meeting_key=location_nation&amp;meeting_key_value%5B%5D=USA"', $html );
+	}
+
+	public function test_crouton_query_string_attribute_maps_through_bmlt_tabs() {
+		$html = do_shortcode( '[bmlt_tabs query_string="weekdays=2"]' );
+		$this->assertStringContainsString( 'data-query="weekdays=2"', $html );
+	}
+
+	public function test_crouton_no_query_string_omits_data_query() {
+		$html = do_shortcode( '[crouton_map]' );
+		$this->assertStringNotContainsString( 'data-query', $html );
 	}
 
 	public function test_crouton_has_areas_adds_service_body_column() {
