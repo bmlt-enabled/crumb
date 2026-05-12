@@ -3,7 +3,7 @@
  * Plugin Name: Crumb
  * Plugin URI: https://wordpress.org/plugins/crumb/
  * Description: Embeds the Crumb meeting finder widget on any page or post using a shortcode.
- * Version: 1.5.0
+ * Version: 1.6.0
  * Author: bmltenabled
  * Author URI: https://bmlt.app
  * License: GPL v2 or later
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'CRUMB_VERSION', '1.5.0' );
+define( 'CRUMB_VERSION', '1.6.0' );
 
 class Crumb {
 
@@ -224,6 +224,11 @@ class Crumb {
 		if ( isset( $atts['report_update_url'] ) ) {
 			$translated['update_url'] = $atts['report_update_url'];
 		}
+		// Crouton's query_string is a raw BMLT query appended to searches; the equivalent in
+		// the Crumb widget is data-query, which routes through bmlt-query-client's rawQuery().
+		if ( isset( $atts['query_string'] ) ) {
+			$translated['query'] = $atts['query_string'];
+		}
 
 		// Crouton's has_areas / has_regions toggles surface the originating service body in
 		// the listing. Emit the default columns plus service_body so that information stays visible.
@@ -259,6 +264,7 @@ class Crumb {
 				'update_url'         => null,
 				'columns'            => null,
 				'language'           => null,
+				'query'              => null,
 			],
 			$atts,
 			'crumb'
@@ -333,6 +339,13 @@ class Crumb {
 		// Comma-separated list of columns; widget validates the values.
 		if ( null !== $atts['columns'] && '' !== trim( (string) $atts['columns'] ) ) {
 			$div .= ' data-columns="' . esc_attr( trim( (string) $atts['columns'] ) ) . '"';
+		}
+
+		// Raw BMLT query string. When set, the widget routes through rawQuery() and disables
+		// geolocation, so service_body / format_ids are ignored by the widget — the embedder's
+		// query string is authoritative. Shortcode-only (no admin setting).
+		if ( null !== $atts['query'] && '' !== trim( (string) $atts['query'] ) ) {
+			$div .= ' data-query="' . esc_attr( trim( (string) $atts['query'] ) ) . '"';
 		}
 
 		$div .= '></div>';
@@ -790,6 +803,8 @@ class Crumb {
 				<code>[crumb]</code>
 				<p><?php esc_html_e( 'Override settings per page:', 'crumb' ); ?></p>
 				<code>[crumb server="https://your-server/main_server" service_body="42" format_ids="17,54" view="map" geolocation="true" geolocation_radius="-50" language="es"]</code>
+				<p><?php esc_html_e( 'Raw BMLT query (replaces the default load, disables geolocation). Encode brackets as %5B / %5D — WordPress shortcodes can\'t contain literal brackets:', 'crumb' ); ?></p>
+				<code>[crumb query="meeting_key=location_nation&amp;meeting_key_value%5B%5D=USA"]</code>
 
 				<?php submit_button(); ?>
 			</form>
