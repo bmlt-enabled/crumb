@@ -11,7 +11,7 @@ class Test_Crumb extends WP_UnitTestCase {
 		$GLOBALS['wp_scripts'] = new WP_Scripts();
 		// Reset private statics on Crumb.
 		$ref = new ReflectionClass( Crumb::class );
-		foreach ( [ 'shortcode_geolocation', 'shortcode_geolocation_radius', 'crouton_options' ] as $prop ) {
+		foreach ( [ 'shortcode_geolocation', 'shortcode_geolocation_radius', 'shortcode_language', 'crouton_options' ] as $prop ) {
 			$p = $ref->getProperty( $prop );
 			$p->setAccessible( true );
 			$p->setValue( null, null );
@@ -412,6 +412,92 @@ class Test_Crumb extends WP_UnitTestCase {
 		$config = $this->get_inline_config();
 		$this->assertNotNull( $config );
 		$this->assertSame( -50, $config['geolocationRadius'] );
+	}
+
+	// -------------------------------------------------------------------------
+	// language shortcode attribute + option
+	// -------------------------------------------------------------------------
+
+	public function test_shortcode_language_sets_config() {
+		$this->enqueue_crumb();
+		do_shortcode( '[crumb language="es"]' );
+
+		Crumb::localize_config();
+
+		$config = $this->get_inline_config();
+		$this->assertNotNull( $config );
+		$this->assertSame( 'es', $config['language'] );
+	}
+
+	public function test_shortcode_language_invalid_is_dropped() {
+		$this->enqueue_crumb();
+		do_shortcode( '[crumb language="banana"]' );
+
+		Crumb::localize_config();
+
+		$raw = wp_scripts()->get_data( 'crumb', 'before' );
+		$this->assertEmpty( $raw );
+	}
+
+	public function test_saved_language_option_sets_config() {
+		$this->enqueue_crumb();
+		update_option( 'crumb_language', 'fr' );
+
+		Crumb::localize_config();
+
+		$config = $this->get_inline_config();
+		$this->assertNotNull( $config );
+		$this->assertSame( 'fr', $config['language'] );
+
+		delete_option( 'crumb_language' );
+	}
+
+	public function test_shortcode_language_overrides_saved_option() {
+		$this->enqueue_crumb();
+		update_option( 'crumb_language', 'fr' );
+		do_shortcode( '[crumb language="de"]' );
+
+		Crumb::localize_config();
+
+		$config = $this->get_inline_config();
+		$this->assertNotNull( $config );
+		$this->assertSame( 'de', $config['language'] );
+
+		delete_option( 'crumb_language' );
+	}
+
+	public function test_widget_config_json_language_takes_precedence_over_option() {
+		// JSON widget_config is loaded first; saved option only fills in when language is unset.
+		$this->enqueue_crumb();
+		update_option( 'crumb_widget_config', '{"language":"pt"}' );
+		update_option( 'crumb_language', 'fr' );
+
+		Crumb::localize_config();
+
+		$config = $this->get_inline_config();
+		$this->assertNotNull( $config );
+		$this->assertSame( 'pt', $config['language'] );
+
+		delete_option( 'crumb_widget_config' );
+		delete_option( 'crumb_language' );
+	}
+
+	public function test_sanitize_language_accepts_supported_code() {
+		$this->assertSame( 'es', Crumb::sanitize_language( 'es' ) );
+		$this->assertSame( 'ja', Crumb::sanitize_language( 'ja' ) );
+	}
+
+	public function test_sanitize_language_rejects_unsupported() {
+		$this->assertSame( '', Crumb::sanitize_language( 'banana' ) );
+		$this->assertSame( '', Crumb::sanitize_language( 'EN-US' ) );
+	}
+
+	public function test_sanitize_language_empty_returns_empty() {
+		$this->assertSame( '', Crumb::sanitize_language( '' ) );
+	}
+
+	public function test_sanitize_language_lowercases_and_trims() {
+		$this->assertSame( 'fr', Crumb::sanitize_language( '  FR  ' ) );
 	}
 
 	// -------------------------------------------------------------------------
