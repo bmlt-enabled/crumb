@@ -3,7 +3,7 @@
  * Plugin Name: Crumb
  * Plugin URI: https://wordpress.org/plugins/crumb/
  * Description: Embeds the Crumb meeting finder widget on any page or post using a shortcode.
- * Version: 1.4.0
+ * Version: 1.5.0
  * Author: bmltenabled
  * Author URI: https://bmlt.app
  * License: GPL v2 or later
@@ -15,18 +15,22 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'CRUMB_VERSION', '1.4.0' );
+define( 'CRUMB_VERSION', '1.5.0' );
 
 class Crumb {
 
 	private static ?self $instance = null;
 	private static ?bool $shortcode_geolocation        = null;
 	private static ?int $shortcode_geolocation_radius = null;
+	private static ?string $shortcode_language        = null;
 	private static ?array $crouton_options             = null;
 	private static array $compat_tags                  = [];
 
 	const DEFAULT_CDN_URL = 'https://cdn.aws.bmlt.app/crumb-widget.js';
 	const REWRITE_VERSION = '1';
+
+	/** Languages the widget supports (kept in sync with src/stores/localization.ts). */
+	const SUPPORTED_LANGUAGES = [ 'en', 'es', 'fr', 'de', 'pt', 'it', 'sv', 'da', 'el', 'fa', 'pl', 'ru', 'ja' ];
 
 	/**
 	 * Tag → forced view for crouton-named shortcodes.
@@ -254,6 +258,7 @@ class Crumb {
 				'geolocation_radius' => null,
 				'update_url'         => null,
 				'columns'            => null,
+				'language'           => null,
 			],
 			$atts,
 			'crumb'
@@ -268,6 +273,15 @@ class Crumb {
 			$radius = (int) $atts['geolocation_radius'];
 			if ( 0 !== $radius ) {
 				self::$shortcode_geolocation_radius = $radius;
+			}
+		}
+
+		// Language must be one of the codes the widget bundles; otherwise we drop it
+		// and let the widget auto-detect from navigator.language.
+		if ( null !== $atts['language'] ) {
+			$lang = strtolower( trim( (string) $atts['language'] ) );
+			if ( in_array( $lang, self::SUPPORTED_LANGUAGES, true ) ) {
+				self::$shortcode_language = $lang;
 			}
 		}
 
@@ -433,6 +447,17 @@ class Crumb {
 			$config['geolocationRadius'] = self::$shortcode_geolocation_radius;
 		}
 
+		// Shortcode language overrides; otherwise fall back to the saved option.
+		// Empty string in either path means "let the widget auto-detect".
+		if ( null !== self::$shortcode_language ) {
+			$config['language'] = self::$shortcode_language;
+		} elseif ( ! isset( $config['language'] ) ) {
+			$saved_language = get_option( 'crumb_language', '' );
+			if ( '' !== $saved_language && in_array( $saved_language, self::SUPPORTED_LANGUAGES, true ) ) {
+				$config['language'] = $saved_language;
+			}
+		}
+
 		if ( ! empty( $config ) ) {
 			wp_add_inline_script( 'crumb', 'var CrumbWidgetConfig = ' . wp_json_encode( $config ) . ';', 'before' );
 		}
@@ -475,6 +500,11 @@ class Crumb {
 		}
 		$val = (int) $trimmed;
 		return ( 0 !== $val ) ? (string) $val : '';
+	}
+
+	public static function sanitize_language( string $input ): string {
+		$lang = strtolower( trim( $input ) );
+		return in_array( $lang, self::SUPPORTED_LANGUAGES, true ) ? $lang : '';
 	}
 
 	public static function sanitize_config( string $input ): string {
@@ -528,6 +558,14 @@ class Crumb {
 		register_setting( $group, 'crumb_css_template', 'sanitize_text_field' );
 		register_setting( $group, 'crumb_view', 'sanitize_text_field' );
 		register_setting( $group, 'crumb_update_url', 'sanitize_text_field' );
+		register_setting(
+			$group,
+			'crumb_language',
+			[
+				'type'              => 'string',
+				'sanitize_callback' => [ static::class, 'sanitize_language' ],
+			]
+		);
 		register_setting(
 			$group,
 			'crumb_geolocation_radius',
@@ -659,6 +697,38 @@ class Crumb {
 						</td>
 					</tr>
 					<tr>
+						<th scope="row"><label for="crumb_language">Language</label></th>
+						<td>
+							<?php
+							$current_language = get_option( 'crumb_language', '' );
+							$language_names   = [
+								'en' => 'English',
+								'es' => 'Español',
+								'fr' => 'Français',
+								'de' => 'Deutsch',
+								'pt' => 'Português',
+								'it' => 'Italiano',
+								'sv' => 'Svenska',
+								'da' => 'Dansk',
+								'el' => 'Ελληνικά',
+								'fa' => 'فارسی',
+								'pl' => 'Polski',
+								'ru' => 'Русский',
+								'ja' => '日本語',
+							];
+							?>
+							<select id="crumb_language" name="crumb_language">
+								<option value="" <?php selected( $current_language, '' ); ?>><?php esc_html_e( '— Auto-detect from browser —', 'crumb' ); ?></option>
+								<?php foreach ( self::SUPPORTED_LANGUAGES as $code ) : ?>
+									<option value="<?php echo esc_attr( $code ); ?>" <?php selected( $current_language, $code ); ?>>
+										<?php echo esc_html( $language_names[ $code ] ?? $code ); ?> (<?php echo esc_html( $code ); ?>)
+									</option>
+								<?php endforeach; ?>
+							</select>
+							<p class="description">Optional. Forces the widget UI language. Default behavior is to detect from the visitor's browser (<code>navigator.language</code>). Can be overridden per-page via the shortcode <code>language</code> attribute.</p>
+						</td>
+					</tr>
+					<tr>
 						<th scope="row"><label for="crumb_geolocation_radius">Geolocation Radius</label></th>
 						<td>
 							<input type="number" id="crumb_geolocation_radius" name="crumb_geolocation_radius"
@@ -719,7 +789,7 @@ class Crumb {
 				<p><?php esc_html_e( 'Place this shortcode on any page or post:', 'crumb' ); ?></p>
 				<code>[crumb]</code>
 				<p><?php esc_html_e( 'Override settings per page:', 'crumb' ); ?></p>
-				<code>[crumb server="https://your-server/main_server" service_body="42" format_ids="17,54" view="map" geolocation="true" geolocation_radius="-50"]</code>
+				<code>[crumb server="https://your-server/main_server" service_body="42" format_ids="17,54" view="map" geolocation="true" geolocation_radius="-50" language="es"]</code>
 
 				<?php submit_button(); ?>
 			</form>

@@ -5,7 +5,7 @@ Tags: narcotics anonymous, na, meetings, bmlt, meeting finder
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 1.4.0
+Stable tag: 1.5.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -42,6 +42,7 @@ Shortcode attributes:
 * `geolocation_radius` — Geolocation search radius. Positive integer = fixed radius in miles (or km per server settings). Negative integer = BMLT auto-radius: the server expands the search until it finds roughly that many meetings (e.g. `-50` finds ~50 nearby meetings). Overrides the Geolocation Radius setting and Widget Configuration.
 * `update_url` — URL template for the **Update Meeting Info** link shown at the bottom of the meeting detail panel. Supports tokens `{meeting_id}`, `{meeting_name}`, `{server_url}`, `{return_url}` (URL-encoded on substitution). Works with bmlt-workflow, hosted forms, or `mailto:` URLs.
 * `columns` — Comma-separated list of columns to show in list view (e.g. `time,name,location,address,service_body`). Omit a name to hide that column. Leave unset to use the widget default.
+* `language` — Force the widget UI language for this page (e.g. `en`, `es`, `fr`, `de`, `pt`, `it`, `sv`, `da`, `el`, `fa`, `pl`, `ru`, `ja`). Leave unset to auto-detect from the visitor's browser.
 
 = Switching from Crouton =
 
@@ -124,6 +125,9 @@ The widget fetches meeting data from a BMLT server whose URL you configure in Se
 2. Map view — meeting locations plotted on an interactive map with the same search and filter controls.
 
 == Changelog ==
+
+= 1.5.0 =
+* Added **Language** setting on the global settings page and matching `language` shortcode attribute (e.g. `[crumb language="es"]`). Forces the widget UI language; leave empty to auto-detect from the visitor's browser. Supported codes: `en`, `es`, `fr`, `de`, `pt`, `it`, `sv`, `da`, `el`, `fa`, `pl`, `ru`, `ja`. Per-shortcode value overrides the saved setting; `widget_config` JSON `language` key still wins over both.
 
 = 1.4.0 =
 * Added `columns` shortcode attribute — comma-separated list of columns to show in list view (e.g. `[crumb columns="time,name,location,address,service_body"]`). Omit a name to hide that column. Pairs with the new `data-columns` reader in the Crumb widget; leave unset to use the widget default.
