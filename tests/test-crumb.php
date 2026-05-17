@@ -621,6 +621,94 @@ class Test_Crumb extends WP_UnitTestCase {
 	}
 
 	// -------------------------------------------------------------------------
+	// sanitize_geolocation
+	// -------------------------------------------------------------------------
+
+	public function test_sanitize_geolocation_true() {
+		$this->assertSame( '1', Crumb::sanitize_geolocation( 'true' ) );
+		$this->assertSame( '1', Crumb::sanitize_geolocation( '1' ) );
+	}
+
+	public function test_sanitize_geolocation_false() {
+		$this->assertSame( '0', Crumb::sanitize_geolocation( 'false' ) );
+		$this->assertSame( '0', Crumb::sanitize_geolocation( '0' ) );
+	}
+
+	public function test_sanitize_geolocation_empty_returns_empty() {
+		$this->assertSame( '', Crumb::sanitize_geolocation( '' ) );
+		$this->assertSame( '', Crumb::sanitize_geolocation( '   ' ) );
+	}
+
+	// -------------------------------------------------------------------------
+	// geolocation option merging in get_config / localize_config
+	// -------------------------------------------------------------------------
+
+	public function test_dedicated_geolocation_option_on_sets_config() {
+		$this->enqueue_crumb();
+		update_option( 'crumb_geolocation', '1' );
+
+		Crumb::localize_config();
+
+		$config = $this->get_inline_config();
+		$this->assertNotNull( $config );
+		$this->assertTrue( $config['geolocation'] );
+
+		delete_option( 'crumb_geolocation' );
+	}
+
+	public function test_dedicated_geolocation_option_off_sets_config() {
+		$this->enqueue_crumb();
+		update_option( 'crumb_geolocation', '0' );
+
+		Crumb::localize_config();
+
+		$config = $this->get_inline_config();
+		$this->assertNotNull( $config );
+		$this->assertFalse( $config['geolocation'] );
+
+		delete_option( 'crumb_geolocation' );
+	}
+
+	public function test_json_config_overrides_dedicated_geolocation_option() {
+		$this->enqueue_crumb();
+		update_option( 'crumb_geolocation', '0' );
+		update_option( 'crumb_widget_config', '{"geolocation":true}' );
+
+		Crumb::localize_config();
+
+		$config = $this->get_inline_config();
+		$this->assertNotNull( $config );
+		$this->assertTrue( $config['geolocation'] );
+
+		delete_option( 'crumb_geolocation' );
+		delete_option( 'crumb_widget_config' );
+	}
+
+	public function test_shortcode_attribute_overrides_dedicated_geolocation_option() {
+		$this->enqueue_crumb();
+		update_option( 'crumb_geolocation', '0' );
+		do_shortcode( '[crumb geolocation="true"]' );
+
+		Crumb::localize_config();
+
+		$config = $this->get_inline_config();
+		$this->assertNotNull( $config );
+		$this->assertTrue( $config['geolocation'] );
+
+		delete_option( 'crumb_geolocation' );
+	}
+
+	public function test_dedicated_geolocation_option_empty_does_not_set_config() {
+		$this->enqueue_crumb();
+		delete_option( 'crumb_geolocation' );
+
+		Crumb::localize_config();
+
+		$raw = wp_scripts()->get_data( 'crumb', 'before' );
+		$this->assertEmpty( $raw );
+	}
+
+	// -------------------------------------------------------------------------
 	// sanitize_config
 	// -------------------------------------------------------------------------
 

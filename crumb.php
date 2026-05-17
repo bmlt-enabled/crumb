@@ -3,7 +3,7 @@
  * Plugin Name: Crumb
  * Plugin URI: https://wordpress.org/plugins/crumb/
  * Description: Embeds the Crumb meeting finder widget on any page or post using a shortcode.
- * Version: 1.6.0
+ * Version: 1.7.0
  * Author: bmltenabled
  * Author URI: https://bmlt.app
  * License: GPL v2 or later
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'CRUMB_VERSION', '1.6.0' );
+define( 'CRUMB_VERSION', '1.7.0' );
 
 class Crumb {
 
@@ -492,6 +492,12 @@ class Crumb {
 			$config['geolocationRadius'] = (int) $radius_opt;
 		}
 
+		// Dedicated geolocation field — JSON config takes precedence if already set.
+		$geolocation_opt = get_option( 'crumb_geolocation', '' );
+		if ( '' !== $geolocation_opt && ! isset( $config['geolocation'] ) ) {
+			$config['geolocation'] = ( '1' === $geolocation_opt );
+		}
+
 		return $config;
 	}
 
@@ -513,6 +519,14 @@ class Crumb {
 		}
 		$val = (int) $trimmed;
 		return ( 0 !== $val ) ? (string) $val : '';
+	}
+
+	public static function sanitize_geolocation( string $input ): string {
+		$trimmed = trim( $input );
+		if ( '' === $trimmed ) {
+			return '';
+		}
+		return filter_var( $trimmed, FILTER_VALIDATE_BOOLEAN ) ? '1' : '0';
 	}
 
 	public static function sanitize_language( string $input ): string {
@@ -577,6 +591,14 @@ class Crumb {
 			[
 				'type'              => 'string',
 				'sanitize_callback' => [ static::class, 'sanitize_language' ],
+			]
+		);
+		register_setting(
+			$group,
+			'crumb_geolocation',
+			[
+				'type'              => 'string',
+				'sanitize_callback' => [ static::class, 'sanitize_geolocation' ],
 			]
 		);
 		register_setting(
@@ -739,6 +761,23 @@ class Crumb {
 								<?php endforeach; ?>
 							</select>
 							<p class="description">Optional. Forces the widget UI language. Default behavior is to detect from the visitor's browser (<code>navigator.language</code>). Can be overridden per-page via the shortcode <code>language</code> attribute.</p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="crumb_geolocation">Geolocation</label></th>
+						<td>
+							<?php $current_geolocation = get_option( 'crumb_geolocation', '' ); ?>
+							<select id="crumb_geolocation" name="crumb_geolocation">
+								<option value="" <?php selected( $current_geolocation, '' ); ?>><?php esc_html_e( '— Widget Default —', 'crumb' ); ?></option>
+								<option value="1" <?php selected( $current_geolocation, '1' ); ?>><?php esc_html_e( 'On', 'crumb' ); ?></option>
+								<option value="0" <?php selected( $current_geolocation, '0' ); ?>><?php esc_html_e( 'Off', 'crumb' ); ?></option>
+							</select>
+							<p class="description">
+								Optional. Enable or disable location-based search (the <strong>Near Me</strong> button and typed-location search).
+								Widget defaults to <strong>off</strong> for most servers, and <strong>on</strong> when <code>data-server</code> points at the unconstrained aggregator with no service body set.
+								Can be overridden per-page via the shortcode <code>geolocation</code> attribute.
+								Overridden by a <code>geolocation</code> key in Widget Configuration below.
+							</p>
 						</td>
 					</tr>
 					<tr>

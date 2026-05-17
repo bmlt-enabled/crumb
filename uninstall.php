@@ -8,6 +8,7 @@ $crumb_options = [
 	'crumb_service_body',
 	'crumb_css_template',
 	'crumb_view',
+	'crumb_geolocation',
 	'crumb_widget_config',
 ];
 

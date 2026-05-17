@@ -5,7 +5,7 @@ Tags: narcotics anonymous, na, meetings, bmlt, meeting finder
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 1.6.0
+Stable tag: 1.7.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -127,6 +127,9 @@ The widget fetches meeting data from a BMLT server whose URL you configure in Se
 
 == Changelog ==
 
+= 1.7.0 =
+* Added **Geolocation** admin setting — dedicated dropdown (Widget Default / On / Off) to enable or disable location-based search (the **Near Me** button and typed-location search). Complements the existing `geolocation` shortcode attribute, which still overrides per page.
+
 = 1.6.0 =
 * Added `query` shortcode attribute — raw BMLT query string passed through to the Crumb widget's `rawQuery()` for filters the structured options can't express (e.g. multi-value `meeting_key_value[]`). When set, it replaces the default load entirely (`service_body` / `format_ids` are ignored) and forces geolocation off so geo params can't be layered on top. Shortcode-only; no admin setting. Encode brackets as `%5B` / `%5D` because WordPress shortcodes can't contain literal `[` or `]`. Requires Crumb Widget 1.5.0+.
 * Crouton compatibility: `query_string` on `[bmlt_tabs]` / `[bmlt_map]` / `[crouton_tabs]` / `[crouton_map]` now maps to the new `data-query` data attribute, preserving the crouton behavior of appending a raw BMLT query.
@@ -183,6 +186,9 @@ The widget fetches meeting data from a BMLT server whose URL you configure in Se
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.7.0 =
+Adds dedicated Geolocation admin setting to enable or disable location-based search without editing JSON. Safe to update.
 
 = 1.6.0 =
 Adds `query` shortcode attribute and maps crouton's `query_string` to the Crumb widget's new raw-query support. Safe to update.
