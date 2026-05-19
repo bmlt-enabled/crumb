@@ -1377,14 +1377,13 @@ class Test_Crumb extends WP_UnitTestCase {
 		$this->unmock_bmlt_http( $state );
 	}
 
-	public function test_count_shortcode_with_empty_server_returns_empty_string() {
-		update_option( 'crumb_server', '' );
-		update_option( 'bmlt_tabs_options', [] );
+	public function test_count_shortcode_with_explicit_empty_server_returns_empty_string() {
+		// An explicit server="" bypasses the option fallback and returns empty
+		// without attempting an HTTP request. (No HTTP mock installed — a request
+		// would surface as a failed external lookup.)
+		update_option( 'crumb_server', 'https://latest.aws.bmlt.app/main_server/' );
 
-		// No HTTP mock — should not attempt a request.
-		$this->assertSame( '', do_shortcode( '[meeting_count]' ) );
-
-		delete_option( 'bmlt_tabs_options' );
+		$this->assertSame( '', do_shortcode( '[meeting_count server=""]' ) );
 	}
 
 	public function test_count_shortcode_falls_back_to_crouton_server_option() {
