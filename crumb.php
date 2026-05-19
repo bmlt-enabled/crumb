@@ -3,7 +3,7 @@
  * Plugin Name: Crumb
  * Plugin URI: https://wordpress.org/plugins/crumb/
  * Description: Embeds the Crumb meeting finder widget on any page or post using a shortcode.
- * Version: 1.7.0
+ * Version: 1.8.0
  * Author: bmltenabled
  * Author URI: https://bmlt.app
  * License: GPL v2 or later
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'CRUMB_VERSION', '1.7.0' );
+define( 'CRUMB_VERSION', '1.8.0' );
 
 class Crumb {
 
@@ -51,13 +51,24 @@ class Crumb {
 	 */
 	const CROUTON_NOOP_TAGS = [
 		'init_crouton',
-		'bmlt_count',
-		'meeting_count',
-		'group_count',
 		'service_body_names',
 		'root_service_body',
 		'bmlt_handlebar',
 	];
+
+	/**
+	 * Crouton count shortcodes → which count to render.
+	 * Server-side; results cached in a transient.
+	 */
+	const CROUTON_COUNT_TAGS = [
+		'meeting_count' => 'meetings',
+		'bmlt_count'    => 'meetings',
+		'group_count'   => 'groups',
+	];
+
+	const COUNTS_CACHE_TTL         = HOUR_IN_SECONDS;
+	const COUNTS_CACHE_TTL_FAILURE = MINUTE_IN_SECONDS;
+	const COUNTS_FETCH_TIMEOUT     = 3;
 
 	public static function get_instance(): self {
 		if ( null === self::$instance ) {
@@ -198,6 +209,19 @@ class Crumb {
 				add_shortcode( $tag, '__return_empty_string' );
 			}
 		}
+		// Count shortcodes — server-side, cached. Also kept out of $compat_tags so they
+		// don't enqueue the widget JS when used on a page without [crumb].
+		foreach ( self::CROUTON_COUNT_TAGS as $tag => $type ) {
+			if ( shortcode_exists( $tag ) ) {
+				continue;
+			}
+			add_shortcode(
+				$tag,
+				static function ( $atts ) use ( $tag, $type ) {
+					return self::count_shortcode( $atts, $tag, $type );
+				}
+			);
+		}
 	}
 
 	public static function crouton_compat_shortcode( $atts, string $view ): string {
@@ -245,6 +269,142 @@ class Crumb {
 
 	public static function compat_tags(): array {
 		return self::$compat_tags;
+	}
+
+	// -------------------------------------------------------------------------
+	// Count Shortcodes ([meeting_count], [bmlt_count], [group_count])
+	//
+	// Server-side counts fetched from BMLT GetSearchResults and cached in a
+	// transient. Output matches crouton's <span id='bmlt_tabs_*'>N</span>
+	// structure so themes that style those IDs keep working post-migration.
+	// -------------------------------------------------------------------------
+
+	public static function count_shortcode( $atts, string $tag, string $type ): string {
+		$atts = shortcode_atts(
+			[
+				'server'       => null,
+				'service_body' => null,
+				'format_ids'   => null,
+			],
+			is_array( $atts ) ? $atts : [],
+			$tag
+		);
+
+		$server       = esc_url_raw( trim( (string) ( $atts['server'] ?? self::get_option_or_crouton( 'crumb_server', 'https://latest.aws.bmlt.app/main_server/' ) ) ) );
+		$service_body = trim( (string) ( $atts['service_body'] ?? self::get_option_or_crouton( 'crumb_service_body', '' ) ) );
+		$format_ids   = trim( (string) ( $atts['format_ids'] ?? self::get_option_or_crouton( 'crumb_format_ids', '' ) ) );
+
+		if ( '' === $server ) {
+			return '';
+		}
+
+		$counts = self::fetch_counts( $server, $service_body, $format_ids );
+		$value  = isset( $counts[ $type ] ) ? (int) $counts[ $type ] : 0;
+
+		return '<span id="bmlt_tabs_' . esc_attr( $tag ) . '">' . esc_html( (string) $value ) . '</span>';
+	}
+
+	/**
+	 * Fetch meeting + group counts from BMLT, with transient caching.
+	 *
+	 * Group definition matches crouton: distinct tuples of
+	 * (service_body_bigint, meeting_name, lat+lng for in-person/hybrid OR
+	 * virtual_meeting_link + virtual_meeting_additional_info for virtual).
+	 *
+	 * @return array{meetings:int, groups:int}
+	 */
+	private static function fetch_counts( string $server, string $service_body, string $format_ids ): array {
+		$cache_key = 'crumb_counts_' . md5( $server . '|' . $service_body . '|' . $format_ids );
+		$cached    = get_transient( $cache_key );
+		if ( is_array( $cached ) && isset( $cached['meetings'], $cached['groups'] ) ) {
+			return $cached;
+		}
+
+		$url    = self::build_counts_url( $server, $service_body, $format_ids );
+		$result = wp_remote_get(
+			$url,
+			[
+				'timeout'    => self::COUNTS_FETCH_TIMEOUT,
+				'user-agent' => 'Crumb/' . CRUMB_VERSION . '; ' . home_url(),
+			]
+		);
+
+		if ( is_wp_error( $result ) || 200 !== (int) wp_remote_retrieve_response_code( $result ) ) {
+			$counts = [
+				'meetings' => 0,
+				'groups'   => 0,
+			];
+			set_transient( $cache_key, $counts, self::COUNTS_CACHE_TTL_FAILURE );
+			return $counts;
+		}
+
+		$meetings = json_decode( wp_remote_retrieve_body( $result ), true );
+		if ( ! is_array( $meetings ) ) {
+			$meetings = [];
+		}
+
+		$counts = [
+			'meetings' => count( $meetings ),
+			'groups'   => self::count_groups( $meetings ),
+		];
+		set_transient( $cache_key, $counts, self::COUNTS_CACHE_TTL );
+		return $counts;
+	}
+
+	private static function build_counts_url( string $server, string $service_body, string $format_ids ): string {
+		// BMLT expects repeated `services[]=N` / `formats[]=N` params, which add_query_arg
+		// can't produce; build the query string manually.
+		$parts = [
+			'switcher=GetSearchResults',
+			'data_field_key=' . rawurlencode( 'service_body_bigint,meeting_name,venue_type,latitude,longitude,virtual_meeting_link,virtual_meeting_additional_info' ),
+		];
+
+		$service_ids = self::csv_to_ints( $service_body );
+		foreach ( $service_ids as $id ) {
+			$parts[] = 'services%5B%5D=' . $id;
+		}
+		// Match the widget: recurse into child service bodies whenever any are filtered.
+		if ( ! empty( $service_ids ) ) {
+			$parts[] = 'recursive=1';
+		}
+
+		foreach ( self::csv_to_ints( $format_ids ) as $id ) {
+			$parts[] = 'formats%5B%5D=' . $id;
+		}
+
+		return rtrim( $server, '/' ) . '/client_interface/json/?' . implode( '&', $parts );
+	}
+
+	private static function csv_to_ints( string $csv ): array {
+		if ( '' === $csv ) {
+			return [];
+		}
+		$ids = [];
+		foreach ( explode( ',', $csv ) as $part ) {
+			$n = (int) trim( $part );
+			if ( 0 !== $n ) {
+				$ids[] = $n;
+			}
+		}
+		return $ids;
+	}
+
+	private static function count_groups( array $meetings ): int {
+		$seen = [];
+		foreach ( $meetings as $m ) {
+			if ( ! is_array( $m ) ) {
+				continue;
+			}
+			$sb   = $m['service_body_bigint'] ?? '';
+			$name = $m['meeting_name'] ?? '';
+			if ( 2 === (int) ( $m['venue_type'] ?? 0 ) ) {
+				$tail = ( $m['virtual_meeting_link'] ?? '' ) . '|' . ( $m['virtual_meeting_additional_info'] ?? '' );
+			} else {
+				$tail = number_format( (float) ( $m['latitude'] ?? 0 ), 6, '.', '' ) . '|' . number_format( (float) ( $m['longitude'] ?? 0 ), 6, '.', '' );
+			}
+			$seen[ $sb . '|' . $name . '|' . $tail ] = true;
+		}
+		return count( $seen );
 	}
 
 	// -------------------------------------------------------------------------
@@ -844,6 +1004,9 @@ class Crumb {
 				<code>[crumb server="https://your-server/main_server" service_body="42" format_ids="17,54" view="map" geolocation="true" geolocation_radius="-50" language="es"]</code>
 				<p><?php esc_html_e( 'Raw BMLT query (replaces the default load, disables geolocation). Encode brackets as %5B / %5D — WordPress shortcodes can\'t contain literal brackets:', 'crumb' ); ?></p>
 				<code>[crumb query="meeting_key=location_nation&amp;meeting_key_value%5B%5D=USA"]</code>
+				<p><?php esc_html_e( 'Inline counts (server-rendered, cached for one hour). Use anywhere — no widget needed on the page:', 'crumb' ); ?></p>
+				<code>[meeting_count] [group_count]</code>
+				<p class="description"><?php esc_html_e( 'Uses the BMLT Server URL, Service Body IDs, and Format IDs above by default. Override per-instance with server, service_body, or format_ids attributes.', 'crumb' ); ?></p>
 
 				<?php submit_button(); ?>
 			</form>

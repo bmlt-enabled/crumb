@@ -5,7 +5,7 @@ Tags: narcotics anonymous, na, meetings, bmlt, meeting finder
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 1.7.0
+Stable tag: 1.8.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -127,6 +127,9 @@ The widget fetches meeting data from a BMLT server whose URL you configure in Se
 
 == Changelog ==
 
+= 1.8.0 =
+* Crouton compatibility: `[meeting_count]`, `[bmlt_count]`, and `[group_count]` now render actual counts instead of empty strings. Counts are fetched server-side from your configured BMLT server and cached in a WordPress transient (1 hour TTL on success, 60 seconds on failure) so they add no client-side JS and no layout shift. Output matches crouton's `<span id="bmlt_tabs_meeting_count">N</span>` structure so themes that style those IDs keep working. Uses the same BMLT Server URL, Service Body IDs, and Format IDs as `[crumb]` by default; override per-instance with `server`, `service_body`, or `format_ids` attributes. Group count matches crouton's definition (distinct tuples of service body + meeting name + location), and child service bodies are included recursively to agree with what `[crumb]` displays on the same page.
+
 = 1.7.0 =
 * Added **Geolocation** admin setting — dedicated dropdown (Widget Default / On / Off) to enable or disable location-based search (the **Near Me** button and typed-location search). Complements the existing `geolocation` shortcode attribute, which still overrides per page.
 
@@ -186,6 +189,9 @@ The widget fetches meeting data from a BMLT server whose URL you configure in Se
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.8.0 =
+`[meeting_count]`, `[bmlt_count]`, and `[group_count]` now render real counts (server-side, cached) instead of empty strings. Safe to update.
 
 = 1.7.0 =
 Adds dedicated Geolocation admin setting to enable or disable location-based search without editing JSON. Safe to update.

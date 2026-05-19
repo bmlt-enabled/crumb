@@ -1083,27 +1083,26 @@ class Test_Crumb extends WP_UnitTestCase {
 
 	public function test_crouton_noop_shortcodes_render_empty_with_attributes() {
 		// Attributes should be ignored; output stays empty.
-		$this->assertSame( '', do_shortcode( '[bmlt_count live="1"]' ) );
 		$this->assertSame( '', do_shortcode( '[root_service_body field="name"]' ) );
 		$this->assertSame( '', do_shortcode( '[bmlt_handlebar template="foo"]' ) );
 	}
 
 	public function test_register_crouton_shortcodes_does_not_overwrite_noop_tag() {
 		global $shortcode_tags;
-		$saved    = $shortcode_tags['bmlt_count'] ?? null;
+		$saved    = $shortcode_tags['init_crouton'] ?? null;
 		$sentinel = static function () {
 			return 'PRE-EXISTING';
 		};
-		remove_shortcode( 'bmlt_count' );
-		add_shortcode( 'bmlt_count', $sentinel );
+		remove_shortcode( 'init_crouton' );
+		add_shortcode( 'init_crouton', $sentinel );
 
 		Crumb::register_crouton_shortcodes();
-		$this->assertSame( 'PRE-EXISTING', do_shortcode( '[bmlt_count]' ) );
+		$this->assertSame( 'PRE-EXISTING', do_shortcode( '[init_crouton]' ) );
 
 		// Restore.
-		remove_shortcode( 'bmlt_count' );
+		remove_shortcode( 'init_crouton' );
 		if ( $saved ) {
-			$shortcode_tags['bmlt_count'] = $saved;
+			$shortcode_tags['init_crouton'] = $saved;
 		}
 	}
 
@@ -1112,6 +1111,311 @@ class Test_Crumb extends WP_UnitTestCase {
 		$compat = Crumb::compat_tags();
 		foreach ( Crumb::CROUTON_NOOP_TAGS as $tag ) {
 			$this->assertNotContains( $tag, $compat, "{$tag} should not be in compat_tags" );
+		}
+	}
+
+	// -------------------------------------------------------------------------
+	// Crouton compatibility — count shortcodes
+	//
+	// HTTP is mocked via the pre_http_request filter so tests never hit the
+	// network. Each test uses a unique server URL so transient cache keys
+	// don't collide between tests.
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Install a pre_http_request stub. Returns a state object the test can
+	 * inspect for the captured URL and request count.
+	 *
+	 * @param array|WP_Error $response Response array or WP_Error to return.
+	 */
+	private function mock_bmlt_http( $response ): object {
+		$state            = new \stdClass();
+		$state->url       = null;
+		$state->call_count = 0;
+		$state->filter    = static function ( $preempt, $args, $url ) use ( $state, $response ) {
+			$state->url = $url;
+			++$state->call_count;
+			return $response;
+		};
+		add_filter( 'pre_http_request', $state->filter, 10, 3 );
+		return $state;
+	}
+
+	private function unmock_bmlt_http( object $state ): void {
+		remove_filter( 'pre_http_request', $state->filter, 10 );
+	}
+
+	private function http_ok( string $body ): array {
+		return [
+			'body'     => $body,
+			'response' => [
+				'code'    => 200,
+				'message' => 'OK',
+			],
+			'headers'  => [],
+			'cookies'  => [],
+			'filename' => null,
+		];
+	}
+
+	public function test_count_shortcodes_are_registered() {
+		foreach ( array_keys( Crumb::CROUTON_COUNT_TAGS ) as $tag ) {
+			$this->assertTrue( shortcode_exists( $tag ), "Expected {$tag} to be registered" );
+		}
+	}
+
+	public function test_count_tags_not_in_compat_tags() {
+		// Count tags render server-side and don't need widget JS.
+		$compat = Crumb::compat_tags();
+		foreach ( array_keys( Crumb::CROUTON_COUNT_TAGS ) as $tag ) {
+			$this->assertNotContains( $tag, $compat, "{$tag} should not be in compat_tags" );
+		}
+	}
+
+	public function test_meeting_count_renders_count_from_bmlt() {
+		update_option( 'crumb_server', 'https://count-meeting.example/main_server/' );
+		update_option( 'crumb_service_body', '' );
+		$state = $this->mock_bmlt_http( $this->http_ok( wp_json_encode( [ [], [], [] ] ) ) );
+
+		$html = do_shortcode( '[meeting_count]' );
+
+		$this->assertSame( '<span id="bmlt_tabs_meeting_count">3</span>', $html );
+		$this->unmock_bmlt_http( $state );
+	}
+
+	public function test_bmlt_count_aliases_meeting_count() {
+		update_option( 'crumb_server', 'https://count-alias.example/main_server/' );
+		update_option( 'crumb_service_body', '' );
+		$state = $this->mock_bmlt_http( $this->http_ok( wp_json_encode( [ [], [] ] ) ) );
+
+		$html = do_shortcode( '[bmlt_count]' );
+
+		$this->assertSame( '<span id="bmlt_tabs_bmlt_count">2</span>', $html );
+		$this->unmock_bmlt_http( $state );
+	}
+
+	public function test_group_count_dedupes_by_crouton_group_id() {
+		update_option( 'crumb_server', 'https://count-groups.example/main_server/' );
+		update_option( 'crumb_service_body', '' );
+		// Two in-person meetings at the same group (same sb + name + lat/lng) — one group.
+		// Plus one with a different name → second group. Total: 2 groups, 3 meetings.
+		$body  = wp_json_encode(
+			[
+				[
+					'service_body_bigint' => '42',
+					'meeting_name'        => 'Monday Group',
+					'venue_type'          => '1',
+					'latitude'            => '40.123456',
+					'longitude'           => '-74.654321',
+				],
+				[
+					'service_body_bigint' => '42',
+					'meeting_name'        => 'Monday Group',
+					'venue_type'          => '1',
+					'latitude'            => '40.123456',
+					'longitude'           => '-74.654321',
+				],
+				[
+					'service_body_bigint' => '42',
+					'meeting_name'        => 'Tuesday Group',
+					'venue_type'          => '1',
+					'latitude'            => '40.123456',
+					'longitude'           => '-74.654321',
+				],
+			]
+		);
+		$state = $this->mock_bmlt_http( $this->http_ok( $body ) );
+
+		$this->assertSame( '<span id="bmlt_tabs_meeting_count">3</span>', do_shortcode( '[meeting_count]' ) );
+		$this->assertSame( '<span id="bmlt_tabs_group_count">2</span>', do_shortcode( '[group_count]' ) );
+
+		$this->unmock_bmlt_http( $state );
+	}
+
+	public function test_group_count_uses_virtual_fields_for_virtual_meetings() {
+		update_option( 'crumb_server', 'https://count-virtual.example/main_server/' );
+		update_option( 'crumb_service_body', '' );
+		// Two virtual meetings sharing the same link → one group; third with different link → two groups.
+		$body  = wp_json_encode(
+			[
+				[
+					'service_body_bigint'             => '42',
+					'meeting_name'                    => 'Zoom Group',
+					'venue_type'                      => '2',
+					'virtual_meeting_link'            => 'https://zoom.us/j/111',
+					'virtual_meeting_additional_info' => '',
+					'latitude'                        => '0',
+					'longitude'                       => '0',
+				],
+				[
+					'service_body_bigint'             => '42',
+					'meeting_name'                    => 'Zoom Group',
+					'venue_type'                      => '2',
+					'virtual_meeting_link'            => 'https://zoom.us/j/111',
+					'virtual_meeting_additional_info' => '',
+					'latitude'                        => '0',
+					'longitude'                       => '0',
+				],
+				[
+					'service_body_bigint'             => '42',
+					'meeting_name'                    => 'Zoom Group',
+					'venue_type'                      => '2',
+					'virtual_meeting_link'            => 'https://zoom.us/j/222',
+					'virtual_meeting_additional_info' => '',
+					'latitude'                        => '0',
+					'longitude'                       => '0',
+				],
+			]
+		);
+		$state = $this->mock_bmlt_http( $this->http_ok( $body ) );
+
+		$this->assertSame( '<span id="bmlt_tabs_group_count">2</span>', do_shortcode( '[group_count]' ) );
+		$this->unmock_bmlt_http( $state );
+	}
+
+	public function test_count_url_includes_recursive_and_services_when_filtered() {
+		update_option( 'crumb_server', 'https://count-svc.example/main_server/' );
+		update_option( 'crumb_service_body', '1047,1048' );
+		update_option( 'crumb_format_ids', '17' );
+		$state = $this->mock_bmlt_http( $this->http_ok( '[]' ) );
+
+		do_shortcode( '[meeting_count]' );
+
+		$this->assertStringContainsString( '/client_interface/json/?', $state->url );
+		$this->assertStringContainsString( 'switcher=GetSearchResults', $state->url );
+		$this->assertStringContainsString( 'services%5B%5D=1047', $state->url );
+		$this->assertStringContainsString( 'services%5B%5D=1048', $state->url );
+		$this->assertStringContainsString( 'recursive=1', $state->url );
+		$this->assertStringContainsString( 'formats%5B%5D=17', $state->url );
+		// data_field_key keeps the payload small.
+		$this->assertStringContainsString( 'data_field_key=', $state->url );
+		$this->assertStringContainsString( 'service_body_bigint', rawurldecode( $state->url ) );
+
+		$this->unmock_bmlt_http( $state );
+	}
+
+	public function test_count_url_omits_recursive_when_no_service_body() {
+		update_option( 'crumb_server', 'https://count-nosvc.example/main_server/' );
+		update_option( 'crumb_service_body', '' );
+		$state = $this->mock_bmlt_http( $this->http_ok( '[]' ) );
+
+		do_shortcode( '[meeting_count]' );
+
+		$this->assertStringNotContainsString( 'recursive=', $state->url );
+		$this->assertStringNotContainsString( 'services%5B%5D=', $state->url );
+		$this->unmock_bmlt_http( $state );
+	}
+
+	public function test_count_shortcode_attribute_overrides_option() {
+		update_option( 'crumb_server', 'https://count-attr.example/main_server/' );
+		update_option( 'crumb_service_body', '999' );
+		$state = $this->mock_bmlt_http( $this->http_ok( '[]' ) );
+
+		do_shortcode( '[meeting_count service_body="42,57"]' );
+
+		$this->assertStringContainsString( 'services%5B%5D=42', $state->url );
+		$this->assertStringContainsString( 'services%5B%5D=57', $state->url );
+		$this->assertStringNotContainsString( 'services%5B%5D=999', $state->url );
+		$this->unmock_bmlt_http( $state );
+	}
+
+	public function test_count_shortcode_caches_in_transient() {
+		update_option( 'crumb_server', 'https://count-cache.example/main_server/' );
+		update_option( 'crumb_service_body', '' );
+		$state = $this->mock_bmlt_http( $this->http_ok( wp_json_encode( [ [], [], [], [], [] ] ) ) );
+
+		do_shortcode( '[meeting_count]' );
+		do_shortcode( '[meeting_count]' );
+		do_shortcode( '[group_count]' );
+
+		// Three shortcode renders, one HTTP call — second meeting_count + group_count hit cache.
+		$this->assertSame( 1, $state->call_count );
+		$this->unmock_bmlt_http( $state );
+	}
+
+	public function test_count_shortcode_failure_returns_zero_and_caches_briefly() {
+		update_option( 'crumb_server', 'https://count-fail.example/main_server/' );
+		update_option( 'crumb_service_body', '' );
+		$state = $this->mock_bmlt_http( new WP_Error( 'http_request_failed', 'down' ) );
+
+		$html = do_shortcode( '[meeting_count]' );
+		$this->assertSame( '<span id="bmlt_tabs_meeting_count">0</span>', $html );
+
+		// Second call within the failure-TTL window should not re-fetch.
+		do_shortcode( '[meeting_count]' );
+		$this->assertSame( 1, $state->call_count );
+
+		$this->unmock_bmlt_http( $state );
+	}
+
+	public function test_count_shortcode_http_non_200_returns_zero() {
+		update_option( 'crumb_server', 'https://count-500.example/main_server/' );
+		update_option( 'crumb_service_body', '' );
+		$state = $this->mock_bmlt_http(
+			[
+				'body'     => 'Server Error',
+				'response' => [
+					'code'    => 500,
+					'message' => 'Internal Server Error',
+				],
+				'headers'  => [],
+				'cookies'  => [],
+				'filename' => null,
+			]
+		);
+
+		$this->assertSame( '<span id="bmlt_tabs_meeting_count">0</span>', do_shortcode( '[meeting_count]' ) );
+		$this->unmock_bmlt_http( $state );
+	}
+
+	public function test_count_shortcode_invalid_json_returns_zero() {
+		update_option( 'crumb_server', 'https://count-bad.example/main_server/' );
+		update_option( 'crumb_service_body', '' );
+		$state = $this->mock_bmlt_http( $this->http_ok( '<html>not json</html>' ) );
+
+		$this->assertSame( '<span id="bmlt_tabs_meeting_count">0</span>', do_shortcode( '[meeting_count]' ) );
+		$this->unmock_bmlt_http( $state );
+	}
+
+	public function test_count_shortcode_with_explicit_empty_server_returns_empty_string() {
+		// An explicit server="" bypasses the option fallback and returns empty
+		// without attempting an HTTP request. (No HTTP mock installed — a request
+		// would surface as a failed external lookup.)
+		update_option( 'crumb_server', 'https://latest.aws.bmlt.app/main_server/' );
+
+		$this->assertSame( '', do_shortcode( '[meeting_count server=""]' ) );
+	}
+
+	public function test_count_shortcode_falls_back_to_crouton_server_option() {
+		delete_option( 'crumb_server' );
+		update_option( 'bmlt_tabs_options', [ 'root_server' => 'https://count-crouton.example/main_server' ] );
+		$state = $this->mock_bmlt_http( $this->http_ok( wp_json_encode( [ [], [] ] ) ) );
+
+		$html = do_shortcode( '[meeting_count]' );
+
+		$this->assertSame( '<span id="bmlt_tabs_meeting_count">2</span>', $html );
+		$this->assertStringStartsWith( 'https://count-crouton.example/main_server/', $state->url );
+
+		$this->unmock_bmlt_http( $state );
+		delete_option( 'bmlt_tabs_options' );
+	}
+
+	public function test_register_crouton_shortcodes_does_not_overwrite_existing_count() {
+		global $shortcode_tags;
+		$saved    = $shortcode_tags['meeting_count'] ?? null;
+		$sentinel = static function () {
+			return 'PRE-EXISTING-COUNT';
+		};
+		remove_shortcode( 'meeting_count' );
+		add_shortcode( 'meeting_count', $sentinel );
+
+		Crumb::register_crouton_shortcodes();
+		$this->assertSame( 'PRE-EXISTING-COUNT', do_shortcode( '[meeting_count]' ) );
+
+		// Restore real handler.
+		remove_shortcode( 'meeting_count' );
+		if ( $saved ) {
+			$shortcode_tags['meeting_count'] = $saved;
 		}
 	}
 
