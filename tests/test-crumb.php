@@ -710,6 +710,80 @@ class Test_Crumb extends WP_UnitTestCase {
 	}
 
 	// -------------------------------------------------------------------------
+	// sanitize_hide_header
+	// -------------------------------------------------------------------------
+
+	public function test_sanitize_hide_header_true() {
+		$this->assertSame( '1', Crumb::sanitize_hide_header( 'true' ) );
+		$this->assertSame( '1', Crumb::sanitize_hide_header( '1' ) );
+	}
+
+	public function test_sanitize_hide_header_false() {
+		$this->assertSame( '0', Crumb::sanitize_hide_header( 'false' ) );
+		$this->assertSame( '0', Crumb::sanitize_hide_header( '0' ) );
+	}
+
+	public function test_sanitize_hide_header_empty_returns_empty() {
+		$this->assertSame( '', Crumb::sanitize_hide_header( '' ) );
+		$this->assertSame( '', Crumb::sanitize_hide_header( '   ' ) );
+	}
+
+	// -------------------------------------------------------------------------
+	// hide_header option merging in get_config / localize_config
+	// -------------------------------------------------------------------------
+
+	public function test_dedicated_hide_header_option_on_sets_config() {
+		$this->enqueue_crumb();
+		update_option( 'crumb_hide_header', '1' );
+
+		Crumb::localize_config();
+
+		$config = $this->get_inline_config();
+		$this->assertNotNull( $config );
+		$this->assertTrue( $config['hideHeader'] );
+
+		delete_option( 'crumb_hide_header' );
+	}
+
+	public function test_dedicated_hide_header_option_off_sets_config() {
+		$this->enqueue_crumb();
+		update_option( 'crumb_hide_header', '0' );
+
+		Crumb::localize_config();
+
+		$config = $this->get_inline_config();
+		$this->assertNotNull( $config );
+		$this->assertFalse( $config['hideHeader'] );
+
+		delete_option( 'crumb_hide_header' );
+	}
+
+	public function test_json_config_overrides_dedicated_hide_header_option() {
+		$this->enqueue_crumb();
+		update_option( 'crumb_hide_header', '0' );
+		update_option( 'crumb_widget_config', '{"hideHeader":true}' );
+
+		Crumb::localize_config();
+
+		$config = $this->get_inline_config();
+		$this->assertNotNull( $config );
+		$this->assertTrue( $config['hideHeader'] );
+
+		delete_option( 'crumb_hide_header' );
+		delete_option( 'crumb_widget_config' );
+	}
+
+	public function test_dedicated_hide_header_option_empty_does_not_set_config() {
+		$this->enqueue_crumb();
+		delete_option( 'crumb_hide_header' );
+
+		Crumb::localize_config();
+
+		$raw = wp_scripts()->get_data( 'crumb', 'before' );
+		$this->assertEmpty( $raw );
+	}
+
+	// -------------------------------------------------------------------------
 	// sanitize_config
 	// -------------------------------------------------------------------------
 
@@ -754,6 +828,7 @@ class Test_Crumb extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'crumb_css_template', $registered );
 		$this->assertArrayHasKey( 'crumb_view', $registered );
 		$this->assertArrayHasKey( 'crumb_geolocation_radius', $registered );
+		$this->assertArrayHasKey( 'crumb_hide_header', $registered );
 		$this->assertArrayHasKey( 'crumb_base_path', $registered );
 		$this->assertArrayHasKey( 'crumb_update_url', $registered );
 		$this->assertArrayHasKey( 'crumb_widget_config', $registered );

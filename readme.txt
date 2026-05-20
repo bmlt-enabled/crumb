@@ -128,6 +128,7 @@ The widget fetches meeting data from a BMLT server whose URL you configure in Se
 == Changelog ==
 
 = 1.8.3 =
+* Added **Header** admin setting — dedicated dropdown (Widget Default / Visible / Hidden) to show or hide the widget's header bar (title, meeting/group counts, search/filter controls). Stored as `crumb_hide_header`; overridden by a `hideHeader` key in Widget Configuration.
 * Fixed crouton `report_update_url` migration: crouton stores a bare URL (e.g. `/submitschedulechange`) and appends `?meeting_id={id}` at render time, but the Crumb widget requires a URL template containing `{meeting_id}` (or another `{token}`) or it drops the link entirely. Both migration paths — the admin-option fallback from `bmlt_tabs_options[report_update_url]` and the shortcode-level `report_update_url` attribute on `[bmlt_tabs]` / `[crouton_tabs]` / `[bmlt_map]` / `[crouton_map]` — now auto-append `?meeting_id={meeting_id}` (or `&meeting_id={meeting_id}` if a query string is already present). Values that already contain a `{token}` are passed through unchanged so deliberately-templated URLs aren't double-decorated.
 
 = 1.8.2 =
@@ -201,7 +202,7 @@ The widget fetches meeting data from a BMLT server whose URL you configure in Se
 == Upgrade Notice ==
 
 = 1.8.3 =
-Fixes crouton → Crumb migration of `report_update_url` so the Update Meeting link survives the move. Safe to update.
+Adds Header admin setting (show/hide the widget header) and fixes crouton → Crumb migration of `report_update_url` so the Update Meeting link survives the move. Safe to update.
 
 = 1.8.2 =
 Fixes crouton → Crumb migration of the "Companion Map" admin setting so the saved view (Show Map and Table / No Map / Embed Map) carries over to Crumb's Default View. Safe to update.

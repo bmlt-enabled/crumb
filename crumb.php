@@ -722,6 +722,12 @@ class Crumb {
 			$config['geolocation'] = ( '1' === $geolocation_opt );
 		}
 
+		// Dedicated hide header field — JSON config takes precedence if already set.
+		$hide_header_opt = get_option( 'crumb_hide_header', '' );
+		if ( '' !== $hide_header_opt && ! isset( $config['hideHeader'] ) ) {
+			$config['hideHeader'] = ( '1' === $hide_header_opt );
+		}
+
 		return $config;
 	}
 
@@ -746,6 +752,14 @@ class Crumb {
 	}
 
 	public static function sanitize_geolocation( string $input ): string {
+		$trimmed = trim( $input );
+		if ( '' === $trimmed ) {
+			return '';
+		}
+		return filter_var( $trimmed, FILTER_VALIDATE_BOOLEAN ) ? '1' : '0';
+	}
+
+	public static function sanitize_hide_header( string $input ): string {
 		$trimmed = trim( $input );
 		if ( '' === $trimmed ) {
 			return '';
@@ -831,6 +845,14 @@ class Crumb {
 			[
 				'type'              => 'string',
 				'sanitize_callback' => [ static::class, 'sanitize_geolocation_radius' ],
+			]
+		);
+		register_setting(
+			$group,
+			'crumb_hide_header',
+			[
+				'type'              => 'string',
+				'sanitize_callback' => [ static::class, 'sanitize_hide_header' ],
 			]
 		);
 		register_setting(
@@ -954,6 +976,27 @@ class Crumb {
 								<option value="both" <?php selected( $current_view, 'both' ); ?>>Both (map above list)</option>
 							</select>
 							<p class="description">Optional. Sets the default view when the widget loads. Can be overridden at runtime via the <code>?view=</code> query parameter, or per-page via the shortcode <code>view</code> attribute.</p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="crumb_hide_header"><?php esc_html_e( 'Header', 'crumb' ); ?></label></th>
+						<td>
+							<?php $current_hide_header = get_option( 'crumb_hide_header', '' ); ?>
+							<select id="crumb_hide_header" name="crumb_hide_header">
+								<option value="" <?php selected( $current_hide_header, '' ); ?>><?php esc_html_e( '— Widget Default (visible) —', 'crumb' ); ?></option>
+								<option value="0" <?php selected( $current_hide_header, '0' ); ?>><?php esc_html_e( 'Visible', 'crumb' ); ?></option>
+								<option value="1" <?php selected( $current_hide_header, '1' ); ?>><?php esc_html_e( 'Hidden', 'crumb' ); ?></option>
+							</select>
+							<p class="description">
+								<?php esc_html_e( 'Optional. Hides the widget\'s header bar (title, meeting/group counts, and search/filter controls).', 'crumb' ); ?>
+								<?php
+								printf(
+									/* translators: %s: hideHeader code reference */
+									esc_html__( 'Overridden by a %s key in Widget Configuration below.', 'crumb' ),
+									'<code>hideHeader</code>'
+								);
+								?>
+							</p>
 						</td>
 					</tr>
 					<tr>
