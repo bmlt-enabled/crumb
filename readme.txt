@@ -5,7 +5,7 @@ Tags: narcotics anonymous, na, meetings, bmlt, meeting finder
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 1.8.0
+Stable tag: 1.8.1
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -127,6 +127,10 @@ The widget fetches meeting data from a BMLT server whose URL you configure in Se
 
 == Changelog ==
 
+= 1.8.1 =
+* Fixed crouton service body migration: the fallback that reads `bmlt_tabs_options['service_bodies']` was extracting `0` instead of the real ID because crouton stores each entry as a 4-part CSV (`"name,id,parent_id,parent_name"`) and the old code ran `intval()` on the whole string. The widget now correctly inherits crouton's selected service bodies on sites that haven't yet saved a Crumb-side value. Malformed entries are skipped, and if none survive the fallback drops through to the singular `service_body` key.
+* Removed the hardcoded `1047,1048` default for Service Body IDs. Fresh installs with no saved value now omit `data-service-body` from the widget output, so the widget shows all meetings on the configured server instead of two arbitrary Western New York service bodies. Existing saved values are unaffected.
+
 = 1.8.0 =
 * Crouton compatibility: `[meeting_count]`, `[bmlt_count]`, and `[group_count]` now render actual counts instead of empty strings. Counts are fetched server-side from your configured BMLT server and cached in a WordPress transient (1 hour TTL on success, 60 seconds on failure) so they add no client-side JS and no layout shift. Output matches crouton's `<span id="bmlt_tabs_meeting_count">N</span>` structure so themes that style those IDs keep working. Uses the same BMLT Server URL, Service Body IDs, and Format IDs as `[crumb]` by default; override per-instance with `server`, `service_body`, or `format_ids` attributes. Group count matches crouton's definition (distinct tuples of service body + meeting name + location), and child service bodies are included recursively to agree with what `[crumb]` displays on the same page.
 
@@ -189,6 +193,9 @@ The widget fetches meeting data from a BMLT server whose URL you configure in Se
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.8.1 =
+Fixes crouton → Crumb migration so saved service bodies actually carry over, and removes the hardcoded Western NY default for fresh installs. Safe to update.
 
 = 1.8.0 =
 `[meeting_count]`, `[bmlt_count]`, and `[group_count]` now render real counts (server-side, cached) instead of empty strings. Safe to update.

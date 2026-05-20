@@ -42,7 +42,8 @@ class Test_Crumb extends WP_UnitTestCase {
 		$html = do_shortcode( '[crumb]' );
 		$this->assertStringContainsString( 'id="crumb-widget"', $html );
 		$this->assertStringContainsString( 'data-server="https://latest.aws.bmlt.app/main_server/"', $html );
-		$this->assertStringContainsString( 'data-service-body="1047,1048"', $html );
+		// No saved service body and no default → attribute omitted (widget shows all).
+		$this->assertStringNotContainsString( 'data-service-body', $html );
 	}
 
 	public function test_shortcode_server_attribute_overrides_option() {
@@ -1018,6 +1019,66 @@ class Test_Crumb extends WP_UnitTestCase {
 		$html = do_shortcode( '[crumb]' );
 		$this->assertStringContainsString( 'data-service-body="1,2"', $html );
 		$this->assertStringNotContainsString( 'data-service-body="99"', $html );
+
+		delete_option( 'bmlt_tabs_options' );
+	}
+
+	public function test_fallback_service_bodies_parses_crouton_csv_format() {
+		// Real crouton stores each service_bodies entry as a 4-part CSV:
+		// "name,id,parent_id,parent_name" (built in crouton/js/bmlt_tabs_admin.js).
+		// Index [1] is the ID. This was previously broken — intval() on the whole
+		// string returned 0 because the value starts with a name, so freshly
+		// migrated sites lost their service body selection.
+		delete_option( 'crumb_service_body' );
+		update_option(
+			'bmlt_tabs_options',
+			[
+				'service_bodies' => [
+					'Western New York Area,1047,0,ROOT',
+					'Genesee Valley Area,1048,0,ROOT',
+				],
+			]
+		);
+
+		$html = do_shortcode( '[crumb]' );
+		$this->assertStringContainsString( 'data-service-body="1047,1048"', $html );
+
+		delete_option( 'bmlt_tabs_options' );
+	}
+
+	public function test_fallback_service_bodies_skips_malformed_csv_entries() {
+		// Bogus entries (no id at index [1], or non-numeric) get dropped; survivors win.
+		delete_option( 'crumb_service_body' );
+		update_option(
+			'bmlt_tabs_options',
+			[
+				'service_bodies' => [
+					'just-a-name',
+					'Some Area,not-a-number,0,ROOT',
+					'Real Area,42,0,ROOT',
+				],
+			]
+		);
+
+		$html = do_shortcode( '[crumb]' );
+		$this->assertStringContainsString( 'data-service-body="42"', $html );
+
+		delete_option( 'bmlt_tabs_options' );
+	}
+
+	public function test_fallback_service_bodies_falls_through_when_all_entries_invalid() {
+		// When every entry is malformed, fall through to the singular service_body key.
+		delete_option( 'crumb_service_body' );
+		update_option(
+			'bmlt_tabs_options',
+			[
+				'service_bodies' => [ 'just-a-name', 'another-name' ],
+				'service_body'   => '99',
+			]
+		);
+
+		$html = do_shortcode( '[crumb]' );
+		$this->assertStringContainsString( 'data-service-body="99"', $html );
 
 		delete_option( 'bmlt_tabs_options' );
 	}

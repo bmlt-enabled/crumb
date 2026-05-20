@@ -3,7 +3,7 @@
  * Plugin Name: Crumb
  * Plugin URI: https://wordpress.org/plugins/crumb/
  * Description: Embeds the Crumb meeting finder widget on any page or post using a shortcode.
- * Version: 1.8.0
+ * Version: 1.8.1
  * Author: bmltenabled
  * Author URI: https://bmlt.app
  * License: GPL v2 or later
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'CRUMB_VERSION', '1.8.0' );
+define( 'CRUMB_VERSION', '1.8.1' );
 
 class Crumb {
 
@@ -164,7 +164,26 @@ class Crumb {
 				return isset( $opts['root_server'] ) ? (string) $opts['root_server'] : '';
 			case 'crumb_service_body':
 				if ( ! empty( $opts['service_bodies'] ) && is_array( $opts['service_bodies'] ) ) {
-					return implode( ',', array_map( 'intval', $opts['service_bodies'] ) );
+					// Crouton stores each entry as a 4-part CSV string built in
+					// crouton/js/bmlt_tabs_admin.js: "name,id,parent_id,parent_name".
+					// The service body ID lives at index [1]. Bare-integer entries
+					// (legacy / hand-edited) are treated as the ID directly.
+					$ids = [];
+					foreach ( $opts['service_bodies'] as $entry ) {
+						$entry = (string) $entry;
+						if ( false !== strpos( $entry, ',' ) ) {
+							$parts = explode( ',', $entry );
+							$id    = isset( $parts[1] ) ? (int) trim( $parts[1] ) : 0;
+						} else {
+							$id = (int) trim( $entry );
+						}
+						if ( 0 !== $id ) {
+							$ids[] = $id;
+						}
+					}
+					if ( ! empty( $ids ) ) {
+						return implode( ',', $ids );
+					}
 				}
 				return isset( $opts['service_body'] ) ? (string) $opts['service_body'] : '';
 			case 'crumb_format_ids':
@@ -461,7 +480,7 @@ class Crumb {
 
 		// null  → not in shortcode, use saved option.
 		// ''    → explicitly set to empty in shortcode, omit data-service-body (show all meetings).
-		$service_body = $atts['service_body'] ?? self::get_option_or_crouton( 'crumb_service_body', '1047,1048' );
+		$service_body = $atts['service_body'] ?? self::get_option_or_crouton( 'crumb_service_body', '' );
 
 		// null → not in shortcode, use saved option. '' → omit (no format lock).
 		$format_ids = $atts['format_ids'] ?? self::get_option_or_crouton( 'crumb_format_ids', '' );
@@ -838,7 +857,7 @@ class Crumb {
 						<th scope="row"><label for="crumb_service_body">Service Body IDs</label></th>
 						<td>
 							<input type="text" id="crumb_service_body" name="crumb_service_body"
-								   value="<?php echo esc_attr( self::get_option_or_crouton( 'crumb_service_body', '1047,1048' ) ); ?>"
+								   value="<?php echo esc_attr( self::get_option_or_crouton( 'crumb_service_body', '' ) ); ?>"
 								   class="regular-text" placeholder="42 or 42,57,103" />
 							<p class="description">Optional. Single ID or comma-separated list. Leave empty to show all meetings. Child service bodies are always included.</p>
 						</td>
