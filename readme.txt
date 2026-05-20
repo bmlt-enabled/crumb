@@ -5,7 +5,7 @@ Tags: narcotics anonymous, na, meetings, bmlt, meeting finder
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 1.8.1
+Stable tag: 1.8.2
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -127,6 +127,9 @@ The widget fetches meeting data from a BMLT server whose URL you configure in Se
 
 == Changelog ==
 
+= 1.8.2 =
+* Fixed crouton "Companion Map" migration: the admin-saved `bmlt_tabs_options['show_map']` value is now used as the fallback for the Default View when no Crumb-side value is saved. Mapping: `1` (Show Map and Table) → `both`, `0` (No Map) → `list`, `embed` (Embed Map as Table Page) → `list` (Crumb has no separate "map tab" view; the widget's runtime toggle still lets visitors switch to the map). The Default View dropdown on the settings page also pre-selects the migrated value so saving the form persists it explicitly.
+
 = 1.8.1 =
 * Fixed crouton service body migration: the fallback that reads `bmlt_tabs_options['service_bodies']` was extracting `0` instead of the real ID because crouton stores each entry as a 4-part CSV (`"name,id,parent_id,parent_name"`) and the old code ran `intval()` on the whole string. The widget now correctly inherits crouton's selected service bodies on sites that haven't yet saved a Crumb-side value. Malformed entries are skipped, and if none survive the fallback drops through to the singular `service_body` key.
 * Removed the hardcoded `1047,1048` default for Service Body IDs. Fresh installs with no saved value now omit `data-service-body` from the widget output, so the widget shows all meetings on the configured server instead of two arbitrary Western New York service bodies. Existing saved values are unaffected.
@@ -193,6 +196,9 @@ The widget fetches meeting data from a BMLT server whose URL you configure in Se
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.8.2 =
+Fixes crouton → Crumb migration of the "Companion Map" admin setting so the saved view (Show Map and Table / No Map / Embed Map) carries over to Crumb's Default View. Safe to update.
 
 = 1.8.1 =
 Fixes crouton → Crumb migration so saved service bodies actually carry over, and removes the hardcoded Western NY default for fresh installs. Safe to update.

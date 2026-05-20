@@ -1083,6 +1083,64 @@ class Test_Crumb extends WP_UnitTestCase {
 		delete_option( 'bmlt_tabs_options' );
 	}
 
+	public function test_fallback_view_from_crouton_show_map_1_is_both() {
+		// Crouton's "Show Map and Table" admin setting → crumb view = 'both'.
+		delete_option( 'crumb_view' );
+		update_option( 'bmlt_tabs_options', [ 'show_map' => '1' ] );
+
+		$html = do_shortcode( '[crumb]' );
+		$this->assertStringContainsString( 'data-view="both"', $html );
+
+		delete_option( 'bmlt_tabs_options' );
+	}
+
+	public function test_fallback_view_from_crouton_show_map_0_is_list() {
+		// Crouton's "No Map" admin setting → crumb view = 'list'.
+		delete_option( 'crumb_view' );
+		update_option( 'bmlt_tabs_options', [ 'show_map' => '0' ] );
+
+		$html = do_shortcode( '[crumb]' );
+		$this->assertStringContainsString( 'data-view="list"', $html );
+
+		delete_option( 'bmlt_tabs_options' );
+	}
+
+	public function test_fallback_view_from_crouton_show_map_embed_is_list() {
+		// Crouton's "Embed Map as Table Page" → crumb view = 'list'.
+		// Crumb has no separate "map tab" view; the widget's runtime toggle still
+		// lets visitors switch to the map themselves.
+		delete_option( 'crumb_view' );
+		update_option( 'bmlt_tabs_options', [ 'show_map' => 'embed' ] );
+
+		$html = do_shortcode( '[crumb]' );
+		$this->assertStringContainsString( 'data-view="list"', $html );
+
+		delete_option( 'bmlt_tabs_options' );
+	}
+
+	public function test_crumb_view_option_takes_precedence_over_crouton_show_map() {
+		// Saved crumb_view wins over the crouton fallback.
+		update_option( 'crumb_view', 'map' );
+		update_option( 'bmlt_tabs_options', [ 'show_map' => '1' ] );
+
+		$html = do_shortcode( '[crumb]' );
+		$this->assertStringContainsString( 'data-view="map"', $html );
+
+		delete_option( 'crumb_view' );
+		delete_option( 'bmlt_tabs_options' );
+	}
+
+	public function test_fallback_view_with_no_show_map_returns_empty() {
+		// No show_map key in crouton options and no crumb_view → no data-view attribute.
+		delete_option( 'crumb_view' );
+		update_option( 'bmlt_tabs_options', [ 'root_server' => 'https://example.org/main_server' ] );
+
+		$html = do_shortcode( '[crumb]' );
+		$this->assertStringNotContainsString( 'data-view', $html );
+
+		delete_option( 'bmlt_tabs_options' );
+	}
+
 	public function test_fallback_formats_to_format_ids() {
 		delete_option( 'crumb_format_ids' );
 		update_option(

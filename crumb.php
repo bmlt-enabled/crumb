@@ -3,7 +3,7 @@
  * Plugin Name: Crumb
  * Plugin URI: https://wordpress.org/plugins/crumb/
  * Description: Embeds the Crumb meeting finder widget on any page or post using a shortcode.
- * Version: 1.8.1
+ * Version: 1.8.2
  * Author: bmltenabled
  * Author URI: https://bmlt.app
  * License: GPL v2 or later
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'CRUMB_VERSION', '1.8.1' );
+define( 'CRUMB_VERSION', '1.8.2' );
 
 class Crumb {
 
@@ -190,6 +190,24 @@ class Crumb {
 				return isset( $opts['formats'] ) ? (string) $opts['formats'] : '';
 			case 'crumb_update_url':
 				return isset( $opts['report_update_url'] ) ? (string) $opts['report_update_url'] : '';
+			case 'crumb_view':
+				// Crouton's "Companion Map" setting (bmlt_tabs_options['show_map']):
+				//   '0'     → No Map                  → list
+				//   '1'     → Show Map and Table      → both
+				//   'embed' → Embed Map as Table Page → list (crumb has no separate "map tab"
+				//                                       view; the widget's runtime toggle still
+				//                                       lets the visitor switch to map)
+				if ( ! isset( $opts['show_map'] ) ) {
+					return '';
+				}
+				switch ( (string) $opts['show_map'] ) {
+					case '1':
+						return 'both';
+					case '0':
+					case 'embed':
+						return 'list';
+				}
+				return '';
 		}
 		return '';
 	}
@@ -486,7 +504,7 @@ class Crumb {
 		$format_ids = $atts['format_ids'] ?? self::get_option_or_crouton( 'crumb_format_ids', '' );
 
 		// Resolve view: shortcode attr → saved option → omit (widget uses its own default).
-		$view_raw     = $atts['view'] ?? get_option( 'crumb_view', '' );
+		$view_raw     = $atts['view'] ?? self::get_option_or_crouton( 'crumb_view', '' );
 		$allowed_views = [ 'list', 'map', 'both' ];
 		$view          = in_array( $view_raw, $allowed_views, true ) ? $view_raw : '';
 
@@ -901,11 +919,12 @@ class Crumb {
 					<tr>
 						<th scope="row"><label for="crumb_view">Default View</label></th>
 						<td>
+							<?php $current_view = self::get_option_or_crouton( 'crumb_view', '' ); ?>
 							<select id="crumb_view" name="crumb_view">
-								<option value="" <?php selected( get_option( 'crumb_view', '' ), '' ); ?>><?php esc_html_e( '— Widget Default (list) —', 'crumb' ); ?></option>
-								<option value="list" <?php selected( get_option( 'crumb_view', '' ), 'list' ); ?>>List</option>
-								<option value="map" <?php selected( get_option( 'crumb_view', '' ), 'map' ); ?>>Map</option>
-								<option value="both" <?php selected( get_option( 'crumb_view', '' ), 'both' ); ?>>Both (map above list)</option>
+								<option value="" <?php selected( $current_view, '' ); ?>><?php esc_html_e( '— Widget Default (list) —', 'crumb' ); ?></option>
+								<option value="list" <?php selected( $current_view, 'list' ); ?>>List</option>
+								<option value="map" <?php selected( $current_view, 'map' ); ?>>Map</option>
+								<option value="both" <?php selected( $current_view, 'both' ); ?>>Both (map above list)</option>
 							</select>
 							<p class="description">Optional. Sets the default view when the widget loads. Can be overridden at runtime via the <code>?view=</code> query parameter, or per-page via the shortcode <code>view</code> attribute.</p>
 						</td>
