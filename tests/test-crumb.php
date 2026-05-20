@@ -898,8 +898,39 @@ class Test_Crumb extends WP_UnitTestCase {
 	}
 
 	public function test_crouton_report_update_url_attribute_maps_to_update_url() {
+		// Already-templated URL passes through unchanged (no double-decoration).
 		$html = do_shortcode( '[crouton_tabs report_update_url="https://example.org/form/?meeting_id={meeting_id}"]' );
 		$this->assertStringContainsString( 'data-update-url="https://example.org/form/?meeting_id={meeting_id}"', $html );
+	}
+
+	public function test_crouton_bare_report_update_url_gets_meeting_id_template_appended() {
+		// Real crouton stores a bare URL (no {token}); its templates hardcode
+		// ?meeting_id={id} at render time. Migrate by appending the equivalent
+		// template so the link survives validUpdateUrl in the widget.
+		$html = do_shortcode( '[crouton_tabs report_update_url="https://example.org/submitschedulechange"]' );
+		$this->assertStringContainsString(
+			'data-update-url="https://example.org/submitschedulechange?meeting_id={meeting_id}"',
+			$html
+		);
+	}
+
+	public function test_crouton_bare_report_update_url_with_existing_query_string_uses_ampersand() {
+		$html = do_shortcode( '[crouton_tabs report_update_url="https://example.org/form/?source=na"]' );
+		$this->assertStringContainsString(
+			'data-update-url="https://example.org/form/?source=na&amp;meeting_id={meeting_id}"',
+			$html
+		);
+	}
+
+	public function test_crouton_relative_report_update_url_path() {
+		// Real-world shortcode example: [bmlt_tabs report_update_url="/submitschedulechange"].
+		// The bare relative path is templated for the widget; browser resolves it against the
+		// document URL at click time.
+		$html = do_shortcode( '[bmlt_tabs show_qrcode="1" report_update_url="/submitschedulechange"]' );
+		$this->assertStringContainsString(
+			'data-update-url="/submitschedulechange?meeting_id={meeting_id}"',
+			$html
+		);
 	}
 
 	public function test_crouton_query_string_attribute_maps_to_data_query() {
@@ -1155,6 +1186,7 @@ class Test_Crumb extends WP_UnitTestCase {
 	}
 
 	public function test_fallback_report_update_url_to_update_url() {
+		// Already-templated URL passes through unchanged.
 		delete_option( 'crumb_update_url' );
 		update_option(
 			'bmlt_tabs_options',
@@ -1163,6 +1195,54 @@ class Test_Crumb extends WP_UnitTestCase {
 
 		$html = do_shortcode( '[crumb]' );
 		$this->assertStringContainsString( 'data-update-url="https://example.org/form/?meeting_id={meeting_id}"', $html );
+
+		delete_option( 'bmlt_tabs_options' );
+	}
+
+	public function test_fallback_bare_report_update_url_gets_meeting_id_template_appended() {
+		// Real crouton stores a bare URL; the admin-option fallback should add the
+		// ?meeting_id={meeting_id} template that crouton's templates appended at
+		// render time, so the link is valid in the widget.
+		delete_option( 'crumb_update_url' );
+		update_option(
+			'bmlt_tabs_options',
+			[ 'report_update_url' => 'https://example.org/submitschedulechange' ]
+		);
+
+		$html = do_shortcode( '[crumb]' );
+		$this->assertStringContainsString(
+			'data-update-url="https://example.org/submitschedulechange?meeting_id={meeting_id}"',
+			$html
+		);
+
+		delete_option( 'bmlt_tabs_options' );
+	}
+
+	public function test_fallback_bare_report_update_url_with_existing_query_string_uses_ampersand() {
+		delete_option( 'crumb_update_url' );
+		update_option(
+			'bmlt_tabs_options',
+			[ 'report_update_url' => 'https://example.org/form/?source=na' ]
+		);
+
+		$html = do_shortcode( '[crumb]' );
+		$this->assertStringContainsString(
+			'data-update-url="https://example.org/form/?source=na&amp;meeting_id={meeting_id}"',
+			$html
+		);
+
+		delete_option( 'bmlt_tabs_options' );
+	}
+
+	public function test_fallback_empty_report_update_url_omits_attribute() {
+		delete_option( 'crumb_update_url' );
+		update_option(
+			'bmlt_tabs_options',
+			[ 'report_update_url' => '' ]
+		);
+
+		$html = do_shortcode( '[crumb]' );
+		$this->assertStringNotContainsString( 'data-update-url', $html );
 
 		delete_option( 'bmlt_tabs_options' );
 	}

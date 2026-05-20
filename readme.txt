@@ -5,7 +5,7 @@ Tags: narcotics anonymous, na, meetings, bmlt, meeting finder
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 1.8.2
+Stable tag: 1.8.3
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -127,6 +127,9 @@ The widget fetches meeting data from a BMLT server whose URL you configure in Se
 
 == Changelog ==
 
+= 1.8.3 =
+* Fixed crouton `report_update_url` migration: crouton stores a bare URL (e.g. `/submitschedulechange`) and appends `?meeting_id={id}` at render time, but the Crumb widget requires a URL template containing `{meeting_id}` (or another `{token}`) or it drops the link entirely. Both migration paths — the admin-option fallback from `bmlt_tabs_options[report_update_url]` and the shortcode-level `report_update_url` attribute on `[bmlt_tabs]` / `[crouton_tabs]` / `[bmlt_map]` / `[crouton_map]` — now auto-append `?meeting_id={meeting_id}` (or `&meeting_id={meeting_id}` if a query string is already present). Values that already contain a `{token}` are passed through unchanged so deliberately-templated URLs aren't double-decorated.
+
 = 1.8.2 =
 * Fixed crouton "Companion Map" migration: the admin-saved `bmlt_tabs_options['show_map']` value is now used as the fallback for the Default View when no Crumb-side value is saved. Mapping: `1` (Show Map and Table) → `both`, `0` (No Map) → `list`, `embed` (Embed Map as Table Page) → `list` (Crumb has no separate "map tab" view; the widget's runtime toggle still lets visitors switch to the map). The Default View dropdown on the settings page also pre-selects the migrated value so saving the form persists it explicitly.
 
@@ -196,6 +199,9 @@ The widget fetches meeting data from a BMLT server whose URL you configure in Se
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.8.3 =
+Fixes crouton → Crumb migration of `report_update_url` so the Update Meeting link survives the move. Safe to update.
 
 = 1.8.2 =
 Fixes crouton → Crumb migration of the "Companion Map" admin setting so the saved view (Show Map and Table / No Map / Embed Map) carries over to Crumb's Default View. Safe to update.

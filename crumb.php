@@ -3,7 +3,7 @@
  * Plugin Name: Crumb
  * Plugin URI: https://wordpress.org/plugins/crumb/
  * Description: Embeds the Crumb meeting finder widget on any page or post using a shortcode.
- * Version: 1.8.2
+ * Version: 1.8.3
  * Author: bmltenabled
  * Author URI: https://bmlt.app
  * License: GPL v2 or later
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'CRUMB_VERSION', '1.8.2' );
+define( 'CRUMB_VERSION', '1.8.3' );
 
 class Crumb {
 
@@ -189,7 +189,9 @@ class Crumb {
 			case 'crumb_format_ids':
 				return isset( $opts['formats'] ) ? (string) $opts['formats'] : '';
 			case 'crumb_update_url':
-				return isset( $opts['report_update_url'] ) ? (string) $opts['report_update_url'] : '';
+				return self::crouton_update_url_to_template(
+					isset( $opts['report_update_url'] ) ? (string) $opts['report_update_url'] : ''
+				);
 			case 'crumb_view':
 				// Crouton's "Companion Map" setting (bmlt_tabs_options['show_map']):
 				//   '0'     → No Map                  → list
@@ -283,7 +285,7 @@ class Crumb {
 			$translated['format_ids'] = $atts['formats'];
 		}
 		if ( isset( $atts['report_update_url'] ) ) {
-			$translated['update_url'] = $atts['report_update_url'];
+			$translated['update_url'] = self::crouton_update_url_to_template( (string) $atts['report_update_url'] );
 		}
 		// Crouton's query_string is a raw BMLT query appended to searches; the equivalent in
 		// the Crumb widget is data-query, which routes through bmlt-query-client's rawQuery().
@@ -306,6 +308,31 @@ class Crumb {
 
 	public static function compat_tags(): array {
 		return self::$compat_tags;
+	}
+
+	/**
+	 * Translate a crouton-style report_update_url (a bare base URL) into a crumb
+	 * update_url template by appending `?meeting_id={meeting_id}` (or
+	 * `&meeting_id={meeting_id}` when the URL already has a query string).
+	 *
+	 * Crouton's templates hardcode `?meeting_id={id}` after the configured URL at
+	 * render time, so the stored value never contains a `{token}` placeholder.
+	 * Crumb requires at least one `{token}` (validated in the widget's
+	 * validUpdateUrl) or the link is dropped — passing the raw crouton value
+	 * through would always lose the link. Empty input returns empty (no
+	 * migration). If the value already contains any `{token}`, it's returned
+	 * unchanged so a deliberately-templated URL isn't double-decorated.
+	 */
+	public static function crouton_update_url_to_template( string $url ): string {
+		$url = trim( $url );
+		if ( '' === $url ) {
+			return '';
+		}
+		if ( preg_match( '/\{\w+\}/', $url ) ) {
+			return $url;
+		}
+		$separator = ( false === strpos( $url, '?' ) ) ? '?' : '&';
+		return $url . $separator . 'meeting_id={meeting_id}';
 	}
 
 	// -------------------------------------------------------------------------
