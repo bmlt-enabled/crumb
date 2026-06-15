@@ -133,6 +133,100 @@ class Test_Crumb extends WP_UnitTestCase {
 	}
 
 	// -------------------------------------------------------------------------
+	// show_formats shortcode attribute and option (→ data-show-formats)
+	// -------------------------------------------------------------------------
+
+	public function test_shortcode_show_formats_true_emits_data_attribute() {
+		$html = do_shortcode( '[crumb show_formats="true"]' );
+		$this->assertStringContainsString( 'data-show-formats="1"', $html );
+	}
+
+	public function test_shortcode_show_formats_false_emits_zero() {
+		$html = do_shortcode( '[crumb show_formats="false"]' );
+		$this->assertStringContainsString( 'data-show-formats="0"', $html );
+	}
+
+	public function test_shortcode_empty_show_formats_omits_attribute() {
+		$html = do_shortcode( '[crumb show_formats=""]' );
+		$this->assertStringNotContainsString( 'data-show-formats', $html );
+	}
+
+	public function test_shortcode_no_show_formats_omits_attribute() {
+		$html = do_shortcode( '[crumb]' );
+		$this->assertStringNotContainsString( 'data-show-formats', $html );
+	}
+
+	public function test_shortcode_show_formats_overrides_saved_option() {
+		update_option( 'crumb_show_formats', '0' );
+		$html = do_shortcode( '[crumb show_formats="true"]' );
+		$this->assertStringContainsString( 'data-show-formats="1"', $html );
+		delete_option( 'crumb_show_formats' );
+	}
+
+	public function test_shortcode_uses_saved_show_formats_option() {
+		update_option( 'crumb_show_formats', '1' );
+		$html = do_shortcode( '[crumb]' );
+		$this->assertStringContainsString( 'data-show-formats="1"', $html );
+		delete_option( 'crumb_show_formats' );
+	}
+
+	public function test_shortcode_no_show_formats_option_omits_attribute() {
+		delete_option( 'crumb_show_formats' );
+		$html = do_shortcode( '[crumb]' );
+		$this->assertStringNotContainsString( 'data-show-formats', $html );
+	}
+
+	// -------------------------------------------------------------------------
+	// inline_formats shortcode attribute and option (→ data-inline-formats)
+	// -------------------------------------------------------------------------
+
+	public function test_shortcode_inline_formats_attribute_adds_data_attribute() {
+		$html = do_shortcode( '[crumb inline_formats="M,W"]' );
+		$this->assertStringContainsString( 'data-inline-formats="M,W"', $html );
+	}
+
+	public function test_shortcode_inline_formats_trimmed() {
+		$html = do_shortcode( '[crumb inline_formats="  M,W  "]' );
+		$this->assertStringContainsString( 'data-inline-formats="M,W"', $html );
+	}
+
+	public function test_shortcode_empty_inline_formats_omits_attribute() {
+		$html = do_shortcode( '[crumb inline_formats=""]' );
+		$this->assertStringNotContainsString( 'data-inline-formats', $html );
+	}
+
+	public function test_shortcode_no_inline_formats_omits_attribute() {
+		$html = do_shortcode( '[crumb]' );
+		$this->assertStringNotContainsString( 'data-inline-formats', $html );
+	}
+
+	public function test_shortcode_inline_formats_overrides_saved_option() {
+		update_option( 'crumb_inline_formats', 'LGBTQ' );
+		$html = do_shortcode( '[crumb inline_formats="M,W"]' );
+		$this->assertStringContainsString( 'data-inline-formats="M,W"', $html );
+		$this->assertStringNotContainsString( 'data-inline-formats="LGBTQ"', $html );
+		delete_option( 'crumb_inline_formats' );
+	}
+
+	public function test_shortcode_uses_saved_inline_formats_option() {
+		update_option( 'crumb_inline_formats', 'M,W' );
+		$html = do_shortcode( '[crumb]' );
+		$this->assertStringContainsString( 'data-inline-formats="M,W"', $html );
+		delete_option( 'crumb_inline_formats' );
+	}
+
+	public function test_shortcode_no_inline_formats_option_omits_attribute() {
+		delete_option( 'crumb_inline_formats' );
+		$html = do_shortcode( '[crumb]' );
+		$this->assertStringNotContainsString( 'data-inline-formats', $html );
+	}
+
+	public function test_shortcode_inline_formats_escapes_html_attributes() {
+		$html = do_shortcode( '[crumb inline_formats=\'"><script>alert(1)</script>\']' );
+		$this->assertStringNotContainsString( '<script>alert(1)</script>', $html );
+	}
+
+	// -------------------------------------------------------------------------
 	// query shortcode attribute (raw BMLT query → data-query)
 	// -------------------------------------------------------------------------
 
@@ -726,6 +820,25 @@ class Test_Crumb extends WP_UnitTestCase {
 	public function test_sanitize_hide_header_empty_returns_empty() {
 		$this->assertSame( '', Crumb::sanitize_hide_header( '' ) );
 		$this->assertSame( '', Crumb::sanitize_hide_header( '   ' ) );
+	}
+
+	// -------------------------------------------------------------------------
+	// sanitize_show_formats
+	// -------------------------------------------------------------------------
+
+	public function test_sanitize_show_formats_true() {
+		$this->assertSame( '1', Crumb::sanitize_show_formats( 'true' ) );
+		$this->assertSame( '1', Crumb::sanitize_show_formats( '1' ) );
+	}
+
+	public function test_sanitize_show_formats_false() {
+		$this->assertSame( '0', Crumb::sanitize_show_formats( 'false' ) );
+		$this->assertSame( '0', Crumb::sanitize_show_formats( '0' ) );
+	}
+
+	public function test_sanitize_show_formats_empty_returns_empty() {
+		$this->assertSame( '', Crumb::sanitize_show_formats( '' ) );
+		$this->assertSame( '', Crumb::sanitize_show_formats( '   ' ) );
 	}
 
 	// -------------------------------------------------------------------------

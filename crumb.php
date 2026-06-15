@@ -3,7 +3,7 @@
  * Plugin Name: Crumb
  * Plugin URI: https://wordpress.org/plugins/crumb/
  * Description: Embeds the Crumb meeting finder widget on any page or post using a shortcode.
- * Version: 1.8.4
+ * Version: 1.8.5
  * Author: bmltenabled
  * Author URI: https://bmlt.app
  * License: GPL v2 or later
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'CRUMB_VERSION', '1.8.4' );
+define( 'CRUMB_VERSION', '1.8.5' );
 
 class Crumb {
 
@@ -493,6 +493,8 @@ class Crumb {
 				'geolocation_radius' => null,
 				'update_url'         => null,
 				'columns'            => null,
+				'show_formats'       => null,
+				'inline_formats'     => null,
 				'language'           => null,
 				'query'              => null,
 			],
@@ -569,6 +571,20 @@ class Crumb {
 		// Comma-separated list of columns; widget validates the values.
 		if ( null !== $atts['columns'] && '' !== trim( (string) $atts['columns'] ) ) {
 			$div .= ' data-columns="' . esc_attr( trim( (string) $atts['columns'] ) ) . '"';
+		}
+
+		// Show a comma-separated list of format codes (e.g. C, O, BT) beneath each meeting name.
+		// null → not in shortcode, use saved option. '' → omit (widget default: hidden).
+		$show_formats_raw = $atts['show_formats'] ?? get_option( 'crumb_show_formats', '' );
+		if ( null !== $show_formats_raw && '' !== trim( (string) $show_formats_raw ) ) {
+			$div .= ' data-show-formats="' . ( filter_var( $show_formats_raw, FILTER_VALIDATE_BOOLEAN ) ? '1' : '0' ) . '"';
+		}
+
+		// Comma-separated format key strings (e.g. M,W) highlighted inline next to each meeting name.
+		// null → not in shortcode, use saved option. '' → omit (no highlights).
+		$inline_formats = $atts['inline_formats'] ?? get_option( 'crumb_inline_formats', '' );
+		if ( ! empty( $inline_formats ) ) {
+			$div .= ' data-inline-formats="' . esc_attr( trim( (string) $inline_formats ) ) . '"';
 		}
 
 		// Raw BMLT query string. When set, the widget routes through rawQuery() and disables
@@ -773,6 +789,14 @@ class Crumb {
 		return filter_var( $trimmed, FILTER_VALIDATE_BOOLEAN ) ? '1' : '0';
 	}
 
+	public static function sanitize_show_formats( string $input ): string {
+		$trimmed = trim( $input );
+		if ( '' === $trimmed ) {
+			return '';
+		}
+		return filter_var( $trimmed, FILTER_VALIDATE_BOOLEAN ) ? '1' : '0';
+	}
+
 	public static function sanitize_language( string $input ): string {
 		$lang = strtolower( trim( $input ) );
 		return in_array( $lang, self::SUPPORTED_LANGUAGES, true ) ? $lang : '';
@@ -829,6 +853,15 @@ class Crumb {
 		register_setting( $group, 'crumb_css_template', 'sanitize_text_field' );
 		register_setting( $group, 'crumb_view', 'sanitize_text_field' );
 		register_setting( $group, 'crumb_update_url', 'sanitize_text_field' );
+		register_setting( $group, 'crumb_inline_formats', 'sanitize_text_field' );
+		register_setting(
+			$group,
+			'crumb_show_formats',
+			[
+				'type'              => 'string',
+				'sanitize_callback' => [ static::class, 'sanitize_show_formats' ],
+			]
+		);
 		register_setting(
 			$group,
 			'crumb_language',
@@ -891,6 +924,8 @@ class Crumb {
 				'hideHeader'        => false,
 				'updateUrl'         => 'https://example.org/meeting-update-form/?meeting_id={meeting_id}',
 				'columns'           => [ 'time', 'name', 'location', 'address' ],
+				'showFormats'       => false,
+				'inlineFormats'     => [ 'M', 'W' ],
 				'map'               => [
 					'tiles'   => [
 						'url'         => '...',
@@ -942,6 +977,27 @@ class Crumb {
 								   value="<?php echo esc_attr( self::get_option_or_crouton( 'crumb_format_ids', '' ) ); ?>"
 								   class="regular-text" placeholder="17 or 17,54,78" />
 							<p class="description">Optional. Single ID or comma-separated list of BMLT format IDs to lock the widget to. Leave empty to show all formats. Can be overridden per-page via the shortcode <code>format_ids</code> attribute.</p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="crumb_show_formats"><?php esc_html_e( 'Show Formats', 'crumb' ); ?></label></th>
+						<td>
+							<?php $current_show_formats = get_option( 'crumb_show_formats', '' ); ?>
+							<select id="crumb_show_formats" name="crumb_show_formats">
+								<option value="" <?php selected( $current_show_formats, '' ); ?>><?php esc_html_e( '— Widget Default (hidden) —', 'crumb' ); ?></option>
+								<option value="0" <?php selected( $current_show_formats, '0' ); ?>><?php esc_html_e( 'Hidden', 'crumb' ); ?></option>
+								<option value="1" <?php selected( $current_show_formats, '1' ); ?>><?php esc_html_e( 'Shown', 'crumb' ); ?></option>
+							</select>
+							<p class="description">Optional. Shows a comma-separated list of format codes (e.g. <code>C, O, BT</code>) beneath each meeting name in the list/cards view. Can be overridden per-page via the shortcode <code>show_formats</code> attribute.</p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="crumb_inline_formats"><?php esc_html_e( 'Inline Formats', 'crumb' ); ?></label></th>
+						<td>
+							<input type="text" id="crumb_inline_formats" name="crumb_inline_formats"
+								   value="<?php echo esc_attr( get_option( 'crumb_inline_formats', '' ) ); ?>"
+								   class="regular-text" placeholder="M,W" />
+							<p class="description">Optional. Comma-separated BMLT format key strings (e.g. <code>M,W</code>) to highlight inline next to each meeting name, rendered as their localized names (e.g. "Men", "Women"). Keys vary by server and only show where used. Can be overridden per-page via the shortcode <code>inline_formats</code> attribute.</p>
 						</td>
 					</tr>
 					<tr>
@@ -1115,7 +1171,7 @@ class Crumb {
 				<p><?php esc_html_e( 'Place this shortcode on any page or post:', 'crumb' ); ?></p>
 				<code>[crumb]</code>
 				<p><?php esc_html_e( 'Override settings per page:', 'crumb' ); ?></p>
-				<code>[crumb server="https://your-server/main_server" service_body="42" format_ids="17,54" view="map" geolocation="true" geolocation_radius="-50" language="es"]</code>
+				<code>[crumb server="https://your-server/main_server" service_body="42" format_ids="17,54" view="map" show_formats="true" inline_formats="M,W" geolocation="true" geolocation_radius="-50" language="es"]</code>
 				<p><?php esc_html_e( 'Raw BMLT query (replaces the default load, disables geolocation). Encode brackets as %5B / %5D — WordPress shortcodes can\'t contain literal brackets:', 'crumb' ); ?></p>
 				<code>[crumb query="meeting_key=location_nation&amp;meeting_key_value%5B%5D=USA"]</code>
 				<p><?php esc_html_e( 'Inline counts (server-rendered, cached for one hour). Use anywhere — no widget needed on the page:', 'crumb' ); ?></p>
