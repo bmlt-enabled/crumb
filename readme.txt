@@ -5,7 +5,7 @@ Tags: narcotics anonymous, na, meetings, bmlt, meeting finder
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 1.8.4
+Stable tag: 1.8.5
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -127,6 +127,10 @@ The widget fetches meeting data from a BMLT server whose URL you configure in Se
 
 == Changelog ==
 
+= 1.8.5 =
+* Added **Show Formats** admin setting and `show_formats` shortcode attribute — shows a comma-separated list of format codes (e.g. `C, O, BT`) beneath each meeting name in the list/cards view. Stored as `crumb_show_formats`; emits `data-show-formats`.
+* Added **Inline Formats** admin setting and `inline_formats` shortcode attribute — highlights specific BMLT format key strings (e.g. `M,W`) inline next to each meeting name, rendered as their localized names (e.g. "Men", "Women"). Stored as `crumb_inline_formats`; emits `data-inline-formats`.
+
 = 1.8.4 =
 * Fixed Default View admin setting being ignored by the crouton-compat shortcodes. `[bmlt_tabs]` / `[crouton_tabs]` / `[bmlt_map]` / `[crouton_map]` were unconditionally forcing the tag-implied view (`list` for `*_tabs`, `both` for `*_map`), which overrode whatever was saved in the admin's Default View dropdown. Resolution now follows: explicit `show_map="1"` on the shortcode → `both` (highest, user-written); else a saved Default View (including the crouton `show_map` admin-option fallback) wins; else the tag-implied default is used as a last-resort fallback for migrating users.
 
@@ -203,6 +207,9 @@ The widget fetches meeting data from a BMLT server whose URL you configure in Se
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.8.5 =
+Adds Show Formats and Inline Formats settings (and `show_formats` / `inline_formats` shortcode attributes) to display or highlight meeting formats in the list view. Safe to update.
 
 = 1.8.4 =
 Fixes the Default View admin setting being overridden by `[bmlt_tabs]` / `[crouton_tabs]` / `[bmlt_map]` / `[crouton_map]`. Safe to update.
