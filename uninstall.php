@@ -12,6 +12,7 @@ $crumb_options = [
 	'crumb_update_url',
 	'crumb_show_formats',
 	'crumb_inline_formats',
+	'crumb_columns',
 	'crumb_geolocation',
 	'crumb_geolocation_radius',
 	'crumb_hide_header',

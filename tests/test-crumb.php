@@ -128,8 +128,70 @@ class Test_Crumb extends WP_UnitTestCase {
 	}
 
 	public function test_shortcode_no_columns_attribute_omits_data_attribute() {
+		delete_option( 'crumb_columns' );
 		$html = do_shortcode( '[crumb]' );
 		$this->assertStringNotContainsString( 'data-columns', $html );
+	}
+
+	public function test_columns_option_emits_data_columns() {
+		update_option( 'crumb_columns', 'time,name,address,formats' );
+		$html = do_shortcode( '[crumb]' );
+		$this->assertStringContainsString( 'data-columns="time,name,address,formats"', $html );
+	}
+
+	public function test_shortcode_columns_attribute_overrides_option() {
+		update_option( 'crumb_columns', 'time,name,address' );
+		$html = do_shortcode( '[crumb columns="name,location"]' );
+		$this->assertStringContainsString( 'data-columns="name,location"', $html );
+	}
+
+	public function test_shortcode_empty_columns_overrides_option() {
+		update_option( 'crumb_columns', 'time,name,address' );
+		$html = do_shortcode( '[crumb columns=""]' );
+		$this->assertStringNotContainsString( 'data-columns', $html );
+	}
+
+	public function test_empty_columns_option_omits_data_columns() {
+		update_option( 'crumb_columns', '' );
+		$html = do_shortcode( '[crumb]' );
+		$this->assertStringNotContainsString( 'data-columns', $html );
+	}
+
+	// -------------------------------------------------------------------------
+	// sanitize_columns
+	// -------------------------------------------------------------------------
+
+	public function test_sanitize_columns_accepts_checkbox_array() {
+		$this->assertSame(
+			'time,name,address',
+			Crumb::sanitize_columns( [ 'time', 'name', 'address' ] )
+		);
+	}
+
+	public function test_sanitize_columns_accepts_csv_string() {
+		$this->assertSame( 'time,name', Crumb::sanitize_columns( ' time , name ' ) );
+	}
+
+	public function test_sanitize_columns_drops_unknown_values() {
+		$this->assertSame( 'time,name', Crumb::sanitize_columns( [ 'time', 'bogus', 'name', '' ] ) );
+	}
+
+	public function test_sanitize_columns_dedupes() {
+		$this->assertSame( 'time,name', Crumb::sanitize_columns( [ 'time', 'name', 'time' ] ) );
+	}
+
+	public function test_sanitize_columns_preserves_submitted_order() {
+		$this->assertSame( 'address,time,name', Crumb::sanitize_columns( 'address,time,name' ) );
+	}
+
+	public function test_sanitize_columns_is_case_insensitive() {
+		$this->assertSame( 'time,service_body', Crumb::sanitize_columns( 'Time,SERVICE_BODY' ) );
+	}
+
+	public function test_sanitize_columns_empty_returns_empty() {
+		$this->assertSame( '', Crumb::sanitize_columns( '' ) );
+		$this->assertSame( '', Crumb::sanitize_columns( [ '' ] ) );
+		$this->assertSame( '', Crumb::sanitize_columns( [] ) );
 	}
 
 	// -------------------------------------------------------------------------
@@ -944,7 +1006,26 @@ class Test_Crumb extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'crumb_hide_header', $registered );
 		$this->assertArrayHasKey( 'crumb_base_path', $registered );
 		$this->assertArrayHasKey( 'crumb_update_url', $registered );
+		$this->assertArrayHasKey( 'crumb_columns', $registered );
 		$this->assertArrayHasKey( 'crumb_widget_config', $registered );
+	}
+
+	public function test_settings_page_renders_column_checkboxes() {
+		update_option( 'crumb_columns', 'time,formats' );
+
+		ob_start();
+		Crumb::settings_page();
+		$html = ob_get_clean();
+
+		foreach ( [ 'time', 'distance', 'name', 'location', 'address', 'service_body', 'formats' ] as $column ) {
+			$this->assertStringContainsString( 'name="crumb_columns[]" value="' . $column . '"', $html );
+		}
+		// Saved columns are checked; unsaved ones are not.
+		$this->assertMatchesRegularExpression( '/value="time"\s+checked/', $html );
+		$this->assertMatchesRegularExpression( '/value="formats"\s+checked/', $html );
+		$this->assertDoesNotMatchRegularExpression( '/value="address"\s+checked/', $html );
+		// Hidden field so unchecking everything still submits the key.
+		$this->assertStringContainsString( '<input type="hidden" name="crumb_columns[]" value="" />', $html );
 	}
 
 	// -------------------------------------------------------------------------
@@ -1210,6 +1291,18 @@ class Test_Crumb extends WP_UnitTestCase {
 	public function test_crouton_has_areas_on_map_shortcode_adds_service_body_column() {
 		$html = do_shortcode( '[bmlt_map has_areas="1"]' );
 		$this->assertStringContainsString( 'data-columns="time,distance,name,location,address,service_body"', $html );
+	}
+
+	public function test_crouton_has_areas_appends_service_body_to_saved_columns() {
+		update_option( 'crumb_columns', 'time,name' );
+		$html = do_shortcode( '[bmlt_tabs has_areas="1"]' );
+		$this->assertStringContainsString( 'data-columns="time,name,service_body"', $html );
+	}
+
+	public function test_crouton_has_areas_keeps_saved_columns_already_showing_service_body() {
+		update_option( 'crumb_columns', 'service_body,time,name' );
+		$html = do_shortcode( '[bmlt_tabs has_areas="1"]' );
+		$this->assertStringContainsString( 'data-columns="service_body,time,name"', $html );
 	}
 
 	// -------------------------------------------------------------------------

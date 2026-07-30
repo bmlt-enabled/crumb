@@ -5,7 +5,7 @@ Tags: narcotics anonymous, na, meetings, bmlt, meeting finder
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 1.8.5
+Stable tag: 1.8.6
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -41,7 +41,7 @@ Shortcode attributes:
 * `geolocation` — Enable or disable geolocation for this page: `true` or `false`
 * `geolocation_radius` — Geolocation search radius. Positive integer = fixed radius in miles (or km per server settings). Negative integer = BMLT auto-radius: the server expands the search until it finds roughly that many meetings (e.g. `-50` finds ~50 nearby meetings). Overrides the Geolocation Radius setting and Widget Configuration.
 * `update_url` — URL template for the **Update Meeting Info** link shown at the bottom of the meeting detail panel. Supports tokens `{meeting_id}`, `{meeting_name}`, `{server_url}`, `{return_url}` (URL-encoded on substitution). Works with bmlt-workflow, hosted forms, or `mailto:` URLs.
-* `columns` — Comma-separated list of columns to show in list view (e.g. `time,name,location,address,service_body`). Omit a name to hide that column. Leave unset to use the widget default.
+* `columns` — Comma-separated list of columns to show in list view (e.g. `time,name,location,address,service_body`). Available values: `time`, `distance` (only renders when geolocation is active), `name`, `location` (venue/building name), `address` (street address with in-person/online badges), `service_body`, `formats` (one chip per format, using its localized name). Omit a name to hide that column; the order you list them in is the order they render. Overrides the List Columns setting. Leave unset to use the List Columns setting, or the widget default (`time,distance,name,location,address`) when that is empty too.
 * `language` — Force the widget UI language for this page (e.g. `en`, `es`, `fr`, `de`, `pt`, `it`, `sv`, `da`, `el`, `fa`, `pl`, `ru`, `ja`). Leave unset to auto-detect from the visitor's browser.
 * `query` — Raw BMLT query string passed through to the widget's `rawQuery()` for filters the structured options can't express (e.g. multi-value `meeting_key_value[]`). When set, this **replaces** the default load entirely — `service_body`, `format_ids`, and `?services` are ignored — and forces geolocation off (the widget can't safely layer lat/long/geo_width on top of an arbitrary query). Encode brackets as `%5B` / `%5D` because WordPress shortcodes can't contain literal `[` or `]`. Example: `[crumb query="meeting_key=location_nation&meeting_key_value%5B%5D=USA"]`. Shortcode-only; no admin setting.
 
@@ -127,6 +127,10 @@ The widget fetches meeting data from a BMLT server whose URL you configure in Se
 
 == Changelog ==
 
+= 1.8.6 =
+* Added **List Columns** admin setting — checkboxes for the columns shown in list view (`time`, `distance`, `name`, `location`, `address`, `service_body`, `formats`). Previously this was only reachable per-page via the `columns` shortcode attribute or the `columns` key in Widget Configuration. Stored as `crumb_columns`; emits `data-columns`. Leave all boxes unchecked to keep the widget default (`time,distance,name,location,address`). The shortcode `columns` attribute still overrides the setting per page and is the way to set a custom column order.
+* Crouton's `has_areas` / `has_regions` attributes now append `service_body` to the saved List Columns selection instead of replacing it with the default column list.
+
 = 1.8.5 =
 * Added **Show Formats** admin setting and `show_formats` shortcode attribute — shows a comma-separated list of format codes (e.g. `C, O, BT`) beneath each meeting name in the list/cards view. Stored as `crumb_show_formats`; emits `data-show-formats`.
 * Added **Inline Formats** admin setting and `inline_formats` shortcode attribute — highlights specific BMLT format key strings (e.g. `M,W`) inline next to each meeting name, rendered as their localized names (e.g. "Men", "Women"). Stored as `crumb_inline_formats`; emits `data-inline-formats`.
@@ -207,6 +211,9 @@ The widget fetches meeting data from a BMLT server whose URL you configure in Se
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.8.6 =
+Adds a List Columns admin setting for choosing which columns appear in list view. Safe to update.
 
 = 1.8.5 =
 Adds Show Formats and Inline Formats settings (and `show_formats` / `inline_formats` shortcode attributes) to display or highlight meeting formats in the list view. Safe to update.
