@@ -3,7 +3,7 @@
  * Plugin Name: Crumb
  * Plugin URI: https://wordpress.org/plugins/crumb/
  * Description: Embeds the Crumb meeting finder widget on any page or post using a shortcode.
- * Version: 1.8.5
+ * Version: 1.8.6
  * Author: bmltenabled
  * Author URI: https://bmlt.app
  * License: GPL v2 or later
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'CRUMB_VERSION', '1.8.5' );
+define( 'CRUMB_VERSION', '1.8.6' );
 
 class Crumb {
 
@@ -31,6 +31,12 @@ class Crumb {
 
 	/** Languages the widget supports (kept in sync with src/stores/localization.ts). */
 	const SUPPORTED_LANGUAGES = [ 'en', 'es', 'fr', 'de', 'pt', 'it', 'sv', 'da', 'el', 'fa', 'pl', 'ru', 'ja' ];
+
+	/** Columns the widget can render in list view, in the widget's canonical order. */
+	const AVAILABLE_COLUMNS = [ 'time', 'distance', 'name', 'location', 'address', 'service_body', 'formats' ];
+
+	/** Columns the widget shows when `columns` is not set. */
+	const DEFAULT_COLUMNS = [ 'time', 'distance', 'name', 'location', 'address' ];
 
 	/**
 	 * Tag → forced view for crouton-named shortcodes.
@@ -306,7 +312,14 @@ class Crumb {
 			( isset( $atts['has_regions'] ) && filter_var( $atts['has_regions'], FILTER_VALIDATE_BOOLEAN ) )
 		);
 		if ( $wants_service_body && ! isset( $translated['columns'] ) ) {
-			$translated['columns'] = 'time,distance,name,location,address,service_body';
+			// Start from the admin's saved columns when there are any, so an explicit
+			// selection isn't discarded — just ensure service_body is part of it.
+			$saved   = self::sanitize_columns( (string) get_option( 'crumb_columns', '' ) );
+			$columns = '' !== $saved ? explode( ',', $saved ) : self::DEFAULT_COLUMNS;
+			if ( ! in_array( 'service_body', $columns, true ) ) {
+				$columns[] = 'service_body';
+			}
+			$translated['columns'] = implode( ',', $columns );
 		}
 
 		return self::setup_shortcode( $translated );
@@ -569,8 +582,10 @@ class Crumb {
 		}
 
 		// Comma-separated list of columns; widget validates the values.
-		if ( null !== $atts['columns'] && '' !== trim( (string) $atts['columns'] ) ) {
-			$div .= ' data-columns="' . esc_attr( trim( (string) $atts['columns'] ) ) . '"';
+		// null → not in shortcode, use saved option. '' → omit (widget default columns).
+		$columns = $atts['columns'] ?? get_option( 'crumb_columns', '' );
+		if ( '' !== trim( (string) $columns ) ) {
+			$div .= ' data-columns="' . esc_attr( trim( (string) $columns ) ) . '"';
 		}
 
 		// Show a comma-separated list of format codes (e.g. C, O, BT) beneath each meeting name.
@@ -797,6 +812,29 @@ class Crumb {
 		return filter_var( $trimmed, FILTER_VALIDATE_BOOLEAN ) ? '1' : '0';
 	}
 
+	/**
+	 * Normalize a column selection to a comma-separated string.
+	 *
+	 * Accepts the checkbox array posted by the settings form or a comma-separated
+	 * string. Unknown names are dropped and duplicates collapsed; the submitted
+	 * order is preserved because it drives the column order in the widget.
+	 *
+	 * @param array|string $input Raw submitted value.
+	 */
+	public static function sanitize_columns( $input ): string {
+		$parts = is_array( $input ) ? $input : explode( ',', (string) $input );
+
+		$columns = [];
+		foreach ( $parts as $part ) {
+			$part = strtolower( trim( (string) $part ) );
+			if ( in_array( $part, self::AVAILABLE_COLUMNS, true ) && ! in_array( $part, $columns, true ) ) {
+				$columns[] = $part;
+			}
+		}
+
+		return implode( ',', $columns );
+	}
+
 	public static function sanitize_language( string $input ): string {
 		$lang = strtolower( trim( $input ) );
 		return in_array( $lang, self::SUPPORTED_LANGUAGES, true ) ? $lang : '';
@@ -860,6 +898,14 @@ class Crumb {
 			[
 				'type'              => 'string',
 				'sanitize_callback' => [ static::class, 'sanitize_show_formats' ],
+			]
+		);
+		register_setting(
+			$group,
+			'crumb_columns',
+			[
+				'type'              => 'string',
+				'sanitize_callback' => [ static::class, 'sanitize_columns' ],
 			]
 		);
 		register_setting(
@@ -998,6 +1044,58 @@ class Crumb {
 								   value="<?php echo esc_attr( get_option( 'crumb_inline_formats', '' ) ); ?>"
 								   class="regular-text" placeholder="M,W" />
 							<p class="description">Optional. Comma-separated BMLT format key strings (e.g. <code>M,W</code>) to highlight inline next to each meeting name, rendered as their localized names (e.g. "Men", "Women"). Keys vary by server and only show where used. Can be overridden per-page via the shortcode <code>inline_formats</code> attribute.</p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'List Columns', 'crumb' ); ?></th>
+						<td>
+							<?php
+							$current_columns = self::sanitize_columns( (string) get_option( 'crumb_columns', '' ) );
+							$selected_columns = '' !== $current_columns ? explode( ',', $current_columns ) : [];
+							$column_labels    = [
+								'time'         => __( 'Time', 'crumb' ),
+								'distance'     => __( 'Distance', 'crumb' ),
+								'name'         => __( 'Name', 'crumb' ),
+								'location'     => __( 'Location', 'crumb' ),
+								'address'      => __( 'Address', 'crumb' ),
+								'service_body' => __( 'Service Body', 'crumb' ),
+								'formats'      => __( 'Formats', 'crumb' ),
+							];
+							$column_notes = [
+								'distance'     => __( 'only renders when geolocation is active', 'crumb' ),
+								'location'     => __( 'venue / building name', 'crumb' ),
+								'address'      => __( 'street address with in-person / online badges', 'crumb' ),
+								'formats'      => __( 'one chip per format, using its localized name', 'crumb' ),
+								'service_body' => __( 'hidden by default', 'crumb' ),
+							];
+							?>
+							<fieldset>
+								<legend class="screen-reader-text"><?php esc_html_e( 'List Columns', 'crumb' ); ?></legend>
+								<?php // Submitted even when every box is unchecked, so clearing the selection saves. ?>
+								<input type="hidden" name="crumb_columns[]" value="" />
+								<?php foreach ( self::AVAILABLE_COLUMNS as $column ) : ?>
+									<label for="crumb_columns_<?php echo esc_attr( $column ); ?>" style="display:block;margin-bottom:4px;">
+										<input type="checkbox" id="crumb_columns_<?php echo esc_attr( $column ); ?>"
+											   name="crumb_columns[]" value="<?php echo esc_attr( $column ); ?>"
+											   <?php checked( in_array( $column, $selected_columns, true ) ); ?> />
+										<?php echo esc_html( $column_labels[ $column ] ); ?>
+										<code><?php echo esc_html( $column ); ?></code>
+										<?php if ( isset( $column_notes[ $column ] ) ) : ?>
+											<span class="description">— <?php echo esc_html( $column_notes[ $column ] ); ?></span>
+										<?php endif; ?>
+									</label>
+								<?php endforeach; ?>
+							</fieldset>
+							<p class="description">
+								<?php
+								printf(
+									/* translators: %s: comma-separated list of the widget's default columns */
+									esc_html__( 'Optional. Columns shown in list view. Leave all unchecked to use the widget default (%s).', 'crumb' ),
+									'<code>' . esc_html( implode( ', ', self::DEFAULT_COLUMNS ) ) . '</code>'
+								);
+								?>
+								<?php esc_html_e( 'Can be overridden per-page via the shortcode columns attribute, which also lets you set a custom column order.', 'crumb' ); ?>
+							</p>
 						</td>
 					</tr>
 					<tr>
@@ -1171,7 +1269,7 @@ class Crumb {
 				<p><?php esc_html_e( 'Place this shortcode on any page or post:', 'crumb' ); ?></p>
 				<code>[crumb]</code>
 				<p><?php esc_html_e( 'Override settings per page:', 'crumb' ); ?></p>
-				<code>[crumb server="https://your-server/main_server" service_body="42" format_ids="17,54" view="map" show_formats="true" inline_formats="M,W" geolocation="true" geolocation_radius="-50" language="es"]</code>
+				<code>[crumb server="https://your-server/main_server" service_body="42" format_ids="17,54" view="map" columns="time,name,location,address" show_formats="true" inline_formats="M,W" geolocation="true" geolocation_radius="-50" language="es"]</code>
 				<p><?php esc_html_e( 'Raw BMLT query (replaces the default load, disables geolocation). Encode brackets as %5B / %5D — WordPress shortcodes can\'t contain literal brackets:', 'crumb' ); ?></p>
 				<code>[crumb query="meeting_key=location_nation&amp;meeting_key_value%5B%5D=USA"]</code>
 				<p><?php esc_html_e( 'Inline counts (server-rendered, cached for one hour). Use anywhere — no widget needed on the page:', 'crumb' ); ?></p>

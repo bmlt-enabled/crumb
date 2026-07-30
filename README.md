@@ -42,7 +42,7 @@ Configured under **Settings → Crumb**. Settings can be overridden per-shortcod
 | Default View         | `view`              | Optional. `list` (default), `map`, or `both` (map above list) |
 | Base Path            | —                   | Optional. Page slug for pretty URLs      |
 | —                    | `geolocation`       | Optional. `true` or `false` per page     |
-| —                    | `columns`           | Optional. Comma-separated list of list-view columns |
+| List Columns         | `columns`           | Optional. Which columns appear in list view (`time`, `distance`, `name`, `location`, `address`, `service_body`, `formats`) |
 | Show Formats         | `show_formats`      | Optional. `true` or `false` — show format codes (e.g. `C, O, BT`) beneath each meeting name |
 | Inline Formats       | `inline_formats`    | Optional. Comma-separated format keys (e.g. `M,W`) highlighted inline next to each meeting name |
 | Widget Configuration | —                   | Optional. JSON for CrumbWidgetConfig     |
