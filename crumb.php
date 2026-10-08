@@ -3,7 +3,7 @@
  * Plugin Name: Crumb
  * Plugin URI: https://wordpress.org/plugins/crumb/
  * Description: Embeds the Crumb meeting finder widget on any page or post using a shortcode.
- * Version: 1.8.6
+ * Version: 1.8.7
  * Author: bmltenabled
  * Author URI: https://bmlt.app
  * License: GPL v2 or later
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'CRUMB_VERSION', '1.8.6' );
+define( 'CRUMB_VERSION', '1.8.7' );
 
 class Crumb {
 
@@ -30,7 +30,7 @@ class Crumb {
 	const REWRITE_VERSION = '1';
 
 	/** Languages the widget supports (kept in sync with src/stores/localization.ts). */
-	const SUPPORTED_LANGUAGES = [ 'en', 'es', 'fr', 'de', 'pt', 'it', 'sv', 'da', 'el', 'fa', 'pl', 'ru', 'ja' ];
+	const SUPPORTED_LANGUAGES = [ 'en', 'es', 'fr', 'de', 'pt', 'it', 'sv', 'da', 'el', 'fa', 'pl', 'ru', 'ja', 'fi' ];
 
 	/** Columns the widget can render in list view, in the widget's canonical order. */
 	const AVAILABLE_COLUMNS = [ 'time', 'distance', 'name', 'location', 'address', 'service_body', 'formats' ];
@@ -1178,6 +1178,7 @@ class Crumb {
 								'pl' => 'Polski',
 								'ru' => 'Русский',
 								'ja' => '日本語',
+								'fi' => 'Suomi',
 							];
 							?>
 							<select id="crumb_language" name="crumb_language">

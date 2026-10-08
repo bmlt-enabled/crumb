@@ -682,6 +682,7 @@ class Test_Crumb extends WP_UnitTestCase {
 	public function test_sanitize_language_accepts_supported_code() {
 		$this->assertSame( 'es', Crumb::sanitize_language( 'es' ) );
 		$this->assertSame( 'ja', Crumb::sanitize_language( 'ja' ) );
+		$this->assertSame( 'fi', Crumb::sanitize_language( 'fi' ) );
 	}
 
 	public function test_sanitize_language_rejects_unsupported() {
