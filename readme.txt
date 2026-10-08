@@ -5,7 +5,7 @@ Tags: narcotics anonymous, na, meetings, bmlt, meeting finder
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 1.8.6
+Stable tag: 1.8.7
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -42,7 +42,7 @@ Shortcode attributes:
 * `geolocation_radius` — Geolocation search radius. Positive integer = fixed radius in miles (or km per server settings). Negative integer = BMLT auto-radius: the server expands the search until it finds roughly that many meetings (e.g. `-50` finds ~50 nearby meetings). Overrides the Geolocation Radius setting and Widget Configuration.
 * `update_url` — URL template for the **Update Meeting Info** link shown at the bottom of the meeting detail panel. Supports tokens `{meeting_id}`, `{meeting_name}`, `{server_url}`, `{return_url}` (URL-encoded on substitution). Works with bmlt-workflow, hosted forms, or `mailto:` URLs.
 * `columns` — Comma-separated list of columns to show in list view (e.g. `time,name,location,address,service_body`). Available values: `time`, `distance` (only renders when geolocation is active), `name`, `location` (venue/building name), `address` (street address with in-person/online badges), `service_body`, `formats` (one chip per format, using its localized name). Omit a name to hide that column; the order you list them in is the order they render. Overrides the List Columns setting. Leave unset to use the List Columns setting, or the widget default (`time,distance,name,location,address`) when that is empty too.
-* `language` — Force the widget UI language for this page (e.g. `en`, `es`, `fr`, `de`, `pt`, `it`, `sv`, `da`, `el`, `fa`, `pl`, `ru`, `ja`). Leave unset to auto-detect from the visitor's browser.
+* `language` — Force the widget UI language for this page (e.g. `en`, `es`, `fr`, `de`, `pt`, `it`, `sv`, `da`, `el`, `fa`, `pl`, `ru`, `ja`, `fi`). Leave unset to auto-detect from the visitor's browser.
 * `query` — Raw BMLT query string passed through to the widget's `rawQuery()` for filters the structured options can't express (e.g. multi-value `meeting_key_value[]`). When set, this **replaces** the default load entirely — `service_body`, `format_ids`, and `?services` are ignored — and forces geolocation off (the widget can't safely layer lat/long/geo_width on top of an arbitrary query). Encode brackets as `%5B` / `%5D` because WordPress shortcodes can't contain literal `[` or `]`. Example: `[crumb query="meeting_key=location_nation&meeting_key_value%5B%5D=USA"]`. Shortcode-only; no admin setting.
 
 = Switching from Crouton =
@@ -126,6 +126,9 @@ The widget fetches meeting data from a BMLT server whose URL you configure in Se
 2. Map view — meeting locations plotted on an interactive map with the same search and filter controls.
 
 == Changelog ==
+
+= 1.8.7 =
+* Added Finnish (`fi`) to the **Language** setting and the `language` shortcode attribute. Requires the Crumb Widget release that ships Finnish (loaded from the CDN).
 
 = 1.8.6 =
 * Added **List Columns** admin setting — checkboxes for the columns shown in list view (`time`, `distance`, `name`, `location`, `address`, `service_body`, `formats`). Previously this was only reachable per-page via the `columns` shortcode attribute or the `columns` key in Widget Configuration. Stored as `crumb_columns`; emits `data-columns`. Leave all boxes unchecked to keep the widget default (`time,distance,name,location,address`). The shortcode `columns` attribute still overrides the setting per page and is the way to set a custom column order.
